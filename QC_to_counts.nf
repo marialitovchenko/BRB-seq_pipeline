@@ -111,41 +111,38 @@ process mapWithStar {
         path(trimmedR1), path(trimmedR2), path(demultiplexfq), 
         path('*.sortedByCoord.out.bam') into mappedBundle
 
-    script:
-    """
+    shell:
+    '''
     STAR --runMode alignReads --runThreadN 1 \
                     --genomeDir /home/litovche/Documents/RefGen/chr21human/ \
                     --outFilterMultimapNmax 1 \
                     --readFilesCommand zcat \
                     --outSAMtype BAM SortedByCoordinate \
                     --readFilesIn "!{demultiplexfq}"
-    """
+    '''
 }
-
-mappedBundle
-    .flatMap { item ->
-        RunID = item[0];
-        LibraryID = item[1];
-        SampleID = item[2];
-        Specie = item[3];
-        Genome = item[4];
-        trimmedR1 = item[5];
-        trimmedR2 = item[6];
-        demultiplexfq  = item[7];
-        files  = item[8];
-        files.collect { onefile -> return [ RunID, LibraryID, SampleID, Specie,
-                        Genome, trimmedR1, trimmedR2, demultiplexfq, onefile ]}
-    }
-    .set { mappedFiles }
 
 /* ----------------------------------------------------------------------------
 * Count reads
 *----------------------------------------------------------------------------*/
 process countReads {
+    // hungry for memory, so I give more
+    memory { 2.GB * task.attempt }
+    time { 1.hour * task.attempt }
+    // tries 3 times, gives us afterwards
+    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+    maxRetries 3
+
     input:
         set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
         path(trimmedR1), path(trimmedR2), path(demultiplexfq),
-        path(mappedBam) from mappedFiles
+        path(mappedBam) from mappedBundle
+
+    output:
+    set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+        path(trimmedR1), path(trimmedR2), path(demultiplexfq), path(mappedBam),
+        path('*.dge.umis.detailed.txt'),
+        path('*.dge.reads.detailed.txt') into countedBundle
 
     shell:
     '''
@@ -154,3 +151,8 @@ process countReads {
          -o "." -gtf "!{gtfPath}" -p BU -UMI "!{umiLen}"
     '''
 }
+
+countedBundle
+    .println()
+
+
