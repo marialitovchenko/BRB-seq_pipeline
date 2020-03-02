@@ -11,22 +11,9 @@
 # Email         : maria.litovchenko@epfl.ch                                      
 ###############################################################################
 
-# Functions -------------------------------------------------------------------
-
-#===  FUNCTION  ===============================================================
-# NAME		:  numbUniqItems
-# DESCRIPTION	: returns number of unique items in array
-# PARAMETER  1	: array
-# RETURN	: a number
-#==============================================================================
-function numbUniqItems () {
-  arr=("$@")
-  numb=$(echo "${arr[@]}" | tr ' ' '\n' | sort | uniq | wc -l)
-  numb="$(($numb-1))"
-  echo $numb
-}
-
 # Inputs ----------------------------------------------------------------------
+# source the library of functions
+source 0_functions.sh
 # path to the input table
 sampleTab=$1
 
@@ -48,3 +35,9 @@ echo "	Number of submitted samples:	" $( numbUniqItems "${SAMPLES[@]}" )
 echo "	Number of submitted species:	" $( numbUniqItems "${SPECIES[@]}" )
 echo "	Number of submitted genomes:	" $( numbUniqItems "${GENOMES[@]}" )
 
+mkdir /scratch/el/monthly/mlitovch/MitoSeq_RPJB_ML_Aug2017/0_rawData_QC
+cd /scratch/el/monthly/mlitovch/MitoSeq_RPJB_ML_Aug2017/0_rawData_QC
+sample=${samples[${LSB_JOBINDEX}]};
+fastqc $sample
+
+exit 0;
