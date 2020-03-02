@@ -8,11 +8,13 @@
 ###############################################################################
 
 #===  FUNCTION  ===============================================================
-# NAME:  debug
-# DESCRIPTION: prints debug message
+# NAME          : currentTime
+# DESCRIPTION   : displays current time
+# RETURN        : a string
 #==============================================================================
-debug() { echo "DEBUG: $*" >&2; }
-
+function currentTime () {
+  echo $( date +%Y-%m-%d,%H-%M-%S )
+}
 
 #===  FUNCTION  ===============================================================
 # NAME		:  numbUniqItems
@@ -26,6 +28,28 @@ function numbUniqItems () {
   local numb="$(($numb-1))"
   echo $numb
 }
+
+#===  FUNCTION  ===============================================================
+# NAME:  trimFastq
+# DESCRIPTION: trims reads with trim-galore based on quality
+# PARAMETER  1: path to folder to put trimmed files
+# PARAMETER  2: path to fastq file - read 1
+# PARAMETER  3: path to fastq file - read 2
+#==============================================================================
+trimFastq() {
+   if (( $# == 2 )); then
+      echo "Started trimming of "$2" at "currentTime
+      trim_galore -q 20 $2 -o $1 --fastqc
+      echo "Finished trimming of "$2" at "currentTime
+   fi
+
+   if (( $# == 3 )); then
+      echo "Started trimming of "$2" and "$3" at "currentTime
+      trim_galore -q 20 --paired $2 $3 -o $1 --fastqc
+      echo "Finished trimming of "$2" and "$3" at "currentTime
+   fi
+}
+
 
 #===  FUNCTION  ===============================================================
 # NAME:  waitall
