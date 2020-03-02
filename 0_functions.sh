@@ -8,15 +8,47 @@
 ###############################################################################
 
 #===  FUNCTION  ===============================================================
+# NAME:  debug
+# DESCRIPTION: prints debug message
+#==============================================================================
+debug() { echo "DEBUG: $*" >&2; }
+
+
+#===  FUNCTION  ===============================================================
 # NAME		:  numbUniqItems
 # DESCRIPTION	: returns number of unique items in array
 # PARAMETER  1	: array
 # RETURN	: a number
 #==============================================================================
 function numbUniqItems () {
-  arr=("$@")
-  numb=$(echo "${arr[@]}" | tr ' ' '\n' | sort | uniq | wc -l)
-  numb="$(($numb-1))"
+  local arr=("$@")
+  local numb=$(echo "${arr[@]}" | tr ' ' '\n' | sort | uniq | wc -l)
+  local numb="$(($numb-1))"
   echo $numb
+}
+
+#===  FUNCTION  ===============================================================
+# NAME:  waitall
+# DESCRIPTION: waits to run the next batch of processes till current batch is
+#	       finished
+#==============================================================================
+waitall() { # PID...
+  local errors=0
+  while :; do
+    for pid in "$@"; do
+      shift
+      if kill -0 "$pid" 2>/dev/null; then
+        set -- "$@" "$pid"
+      elif wait "$pid"; then
+        echo "COMPLETED: $pid exited with zero exit status." >&2;
+      else
+        echo "ERROR: $pid exited with non-zero exit status." >&2;
+        ((++errors))
+      fi
+    done
+    (("$#" > 0)) || break
+    sleep ${WAITALL_DELAY:-1}
+   done
+  ((errors == 0))
 }
 
