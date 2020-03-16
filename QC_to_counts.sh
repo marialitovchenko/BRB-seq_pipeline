@@ -43,8 +43,15 @@ fi
 numbOfProc=4
 R1code="_R1_"
 R2code="_R2_"
+barcodeFile="testBarcoe"
+umiLen=10
+
 trimmedDir=$outputDir"/trimmed"
+demuliplexDir=$outputDir"/demultiplex"
 createIfNotExist $trimmedDir
+createIfNotExist $demuliplexDir
+
+# ADD OPTION NOT TO PRESERVE INTERMEDIATE FILES
 
 # -----------------------------------------------------------------------------
 # Read inputs 
@@ -93,6 +100,36 @@ for (( i=1; i<$sampleCount; i+=$numbOfProc )); do
 
      # perform trimming
      trimFastq $trimmedDir $R1path $R2path & 
+     pids="$pids $!"
+   done
+   waitall $pids
+done
+
+# -----------------------------------------------------------------------------
+# Demultiplex reads
+# -----------------------------------------------------------------------------
+echo $( currentTime )  ": Started demultiplexing reads"
+
+sampleCount=${#SAMPLES[@]}
+for (( i=1; i<$sampleCount; i+=$numbOfProc )); do 
+   pids="" # processes IDs
+   endInd=$(($numbOfProc - 1))
+
+   # lunch numbOfProc "jobs" at the same time
+   for j in $(seq 0 $endInd); do
+     position=$(( $i + $j ))
+     
+     # get fastq files corresponding to the sample
+     currRun=${RUNS[$position]}
+     currLib=${LIBRARIES[$position]}
+     currSample=${SAMPLES[$position]}
+
+     R1path=$(find "$trimmedDir" -type f | grep "$currLib" | grep "$currSample" | grep "$R1code")
+     R2path=$(find "$trimmedDir" -type f | grep "$currLib" | grep "$currSample" | grep "$R2code")
+
+     # perform demultiplexing
+     java -jar $brbseqTools Demultiplex -r1 $R1path -r2 $R2path -c $barcodefile \
+                                        -p BU???? -UMI umiLen -o $demuliplexDir &
      pids="$pids $!"
    done
    waitall $pids
