@@ -1,14 +1,18 @@
 #!/bin/bash
 ###############################################################################
-# Script	: QC_to_counts.sh                                                                                       
+# Script	: QC_to_counts.sh
 # Description	: Performs QC, alignment, demultiplexing and reads falling 
-#		  within genes counting for BRB-seq samples sequenced on 
+#		  within genes counting for BRB-seq samples sequenced on
 #		  Illumina machine.
-# Args          : A tab-separated file with columns RunID, LibraryID, SampleID,
+# Args          : 1) A tab-separated file with columns RunID, LibraryID, SampleID,
 # 		  Specie, Genome; all other columns are ignored. Should contain
-#                 header.                                                                                         
-# Author 	: Maria Litovchenko                             
-# Email         : maria.litovchenko@epfl.ch                                      
+#                 header.
+#                 2) Number of processes to run simulteniously
+# Example       : ./QC_to_counts.sh 
+# Author 	: Maria Litovchenko
+# Email         : maria.litovchenko@epfl.ch
+# TO DO		: put fool defense: if not all cells in the input table are 
+#                 filled, if there is no such file in the directory, etc
 ###############################################################################
 
 # -----------------------------------------------------------------------------
@@ -16,6 +20,8 @@
 # -----------------------------------------------------------------------------
 # source the library of functions
 source 0_functions.sh
+# source the config file to get paths to all software etc
+source 1_config.sh
 
 # path to the input table
 sampleTab=$1
@@ -34,6 +40,8 @@ else
 fi
 
 numbOfProc=4
+R1code="_R1_"
+R2code="_R2_"
 
 # -----------------------------------------------------------------------------
 # Read inputs 
@@ -63,31 +71,32 @@ echo "	Number of submitted genomes:	" $( numbUniqItems "${GENOMES[@]}" )
 # -----------------------------------------------------------------------------
 echo $( currentTime )  ": Started trimming reads"
 
-libCount=${#LIBRARIES[@]}
-for (( i=1; i<$libCount; i+=$numbOfProc )); do
-   # bash arrays are 0-indexed
-   pids=""
+sampleCount=${#SAMPLES[@]}
+for (( i=1; i<$sampleCount; i+=$numbOfProc )); do 
+   pids="" # processes IDs
    endInd=$(($numbOfProc - 1))
 
+   # lunch numbOfProc "jobs" at the same time
    for j in $(seq 0 $endInd); do
-      position=$(( $i + $j ))
+     position=$(( $i + $j ))
+     
+     # get fastq files corresponding to the sample
+     currRun=${RUNS[$position]}
+     currLib=${LIBRARIES[$position]}
+     currSample=${SAMPLES[$position]}
 
-      # Get srr, dgrp and instrument
-      currSRR=${SRRs[$position]}
-      currDGRP=${DGRPs[$position]}
-      currInstrument=${Intrument[$position]}
+     R1path=$(find "$currRun" -type f | grep "$currLib" | grep "$currSample" | grep "$R1code")
+     R2path=$(find "$currRun" -type f | grep "$currLib" | grep "$currSample" | grep "$R2code")
 
-      echo $refGen $currSRR $currDGRP $currInstrument $fastqDir $trimmedDir $bwaDir $deduplDir
-
-      #trimFastq  1>$currSRR".trimMapDedupl.out" 2>$currSRR".trimMapDedupl.err" &
-      pids="$pids $!"
+     # perform trimming
+     trimFastq $R1path $R2path &
+     pids="$pids $!"
    done
    waitall $pids
 done
 
-trimFastq 
 
-STAR --runMode alignReads --twopassMode Basic --outSAMmapqUnique 60 --runThreadN 8 --genomeDir $genomeDir/STAR_Index --outFilterMultimapNmax 1 --readFilesCommand zcat --outSAMtype BAM Unsorted --outFileNamePrefix $bamDir/ --readFilesIn $inputDir/${fastqName}_R2_001.fastq.gz
+#STAR --runMode alignReads --twopassMode Basic --outSAMmapqUnique 60 --runThreadN 8 --genomeDir $genomeDir/STAR_Index --outFilterMultimapNmax 1 --readFilesCommand zcat --outSAMtype BAM Unsorted --outFileNamePrefix $bamDir/ --readFilesIn $inputDir/${fastqName}_R2_001.fastq.gz
 
 # Demultiplex and generate output count/UMI matrix
 # INPUT: R1.fastq and barcodes
