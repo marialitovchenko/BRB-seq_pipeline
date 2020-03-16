@@ -8,6 +8,22 @@
 ###############################################################################
 
 #===  FUNCTION  ===============================================================
+# NAME          : createIfNotExist
+# DESCRIPTION   : creates folder if it doesn't exist
+# RETURN        : void
+#==============================================================================
+function createIfNotExist () {
+   if [[ -d $1 ]]
+   then
+      msg=$": folder "$1" already exist on computer, didn't create a new one"
+      echo $( currentTime ) $msg
+   else
+      mkdir $1
+      echo $( currentTime ) ": created a new folder"$1
+   fi
+}
+
+#===  FUNCTION  ===============================================================
 # NAME          : currentTime
 # DESCRIPTION   : displays current time
 # RETURN        : a string

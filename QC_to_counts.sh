@@ -44,6 +44,7 @@ numbOfProc=4
 R1code="_R1_"
 R2code="_R2_"
 trimmedDir=$outputDir"/trimmed"
+createIfNotExist $trimmedDir
 
 # -----------------------------------------------------------------------------
 # Read inputs 
@@ -72,9 +73,6 @@ echo "	Number of submitted genomes:	" $( numbUniqItems "${GENOMES[@]}" )
 # Trim reads 
 # -----------------------------------------------------------------------------
 echo $( currentTime )  ": Started trimming reads"
-mkdir $trimmedDir
-msg=": created directory for the trimmed reds - " $trimmedDir
-echo $msg
 
 sampleCount=${#SAMPLES[@]}
 for (( i=1; i<$sampleCount; i+=$numbOfProc )); do 
