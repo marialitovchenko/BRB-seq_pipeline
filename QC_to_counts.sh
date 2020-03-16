@@ -94,7 +94,7 @@ for (( i=1; i<$sampleCount; i+=$numbOfProc )); do
      R2path=$(find "$currRun" -type f | grep "$currLib" | grep "$currSample" | grep "$R2code")
 
      # perform trimming
-     trimFastq $trimmedDir $R1path $R2path &
+     trimFastq $trimmedDir $R1path $R2path & 
      pids="$pids $!"
    done
    waitall $pids
