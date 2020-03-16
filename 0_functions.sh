@@ -38,15 +38,15 @@ function numbUniqItems () {
 #==============================================================================
 trimFastq() {
    if (( $# == 2 )); then
-      echo "Started trimming of "$2" at "currentTime
+      echo currentTime ": started trimming of "$2
       trim_galore -q 20 $2 -o $1 --fastqc
-      echo "Finished trimming of "$2" at "currentTime
+      echo currentTime ": finished trimming of "$2 
    fi
 
    if (( $# == 3 )); then
-      echo "Started trimming of "$2" and "$3" at "currentTime
+      echo currentTime ": started trimming of "$2" and "$3
       trim_galore -q 20 --paired $2 $3 -o $1 --fastqc
-      echo "Finished trimming of "$2" and "$3" at "currentTime
+      echo currentTime ": finished trimming of "$2" and "$3
    fi
 }
 
