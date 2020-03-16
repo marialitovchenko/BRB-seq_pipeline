@@ -13,6 +13,7 @@
 # Email         : maria.litovchenko@epfl.ch
 # TO DO		: put fool defense: if not all cells in the input table are 
 #                 filled, if there is no such file in the directory, etc
+# find: ftsopen: No such file or directory
 ###############################################################################
 
 # -----------------------------------------------------------------------------
@@ -42,6 +43,7 @@ fi
 numbOfProc=4
 R1code="_R1_"
 R2code="_R2_"
+trimmedDir=$outputDir"/trimmed"
 
 # -----------------------------------------------------------------------------
 # Read inputs 
@@ -70,6 +72,9 @@ echo "	Number of submitted genomes:	" $( numbUniqItems "${GENOMES[@]}" )
 # Trim reads 
 # -----------------------------------------------------------------------------
 echo $( currentTime )  ": Started trimming reads"
+mkdir $trimmedDir
+msg=": created directory for the trimmed reds - " $trimmedDir
+echo $msg
 
 sampleCount=${#SAMPLES[@]}
 for (( i=1; i<$sampleCount; i+=$numbOfProc )); do 
@@ -89,7 +94,7 @@ for (( i=1; i<$sampleCount; i+=$numbOfProc )); do
      R2path=$(find "$currRun" -type f | grep "$currLib" | grep "$currSample" | grep "$R2code")
 
      # perform trimming
-     trimFastq $R1path $R2path &
+     trimFastq $trimmedDir $R1path $R2path &
      pids="$pids $!"
    done
    waitall $pids
