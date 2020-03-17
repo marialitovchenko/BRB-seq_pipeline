@@ -13,7 +13,6 @@
 # Email         : maria.litovchenko@epfl.ch
 # TO DO		: put fool defense: if not all cells in the input table are 
 #                 filled, if there is no such file in the directory, etc
-# find: ftsopen: No such file or directory
 ###############################################################################
 
 # -----------------------------------------------------------------------------
@@ -45,6 +44,9 @@ R1code="_R1_"
 R2code="_R2_"
 barcodeFile="testBarcoe"
 umiLen=10
+barcodefile="test_input/barcodes_v3.txt"
+
+fastqExtens='.fastq$\|.fq$\|.fq.gz$\|.fastq.gz$'
 
 trimmedDir=$outputDir"/trimmed"
 demuliplexDir=$outputDir"/demultiplex"
@@ -66,12 +68,26 @@ while read runid library sampleid specie genome; do
 	GENOMES+=($genome)
 done < $sampleTab
 
+# remove header from the arrays
+RUNS=("${RUNS[@]:1}")
+LIBRARIES=("${LIBRARIES[@]:1}")
+SAMPLES=("${SAMPLES[@]:1}")
+SPECIES=("${SPECIES[@]:1}")
+GENOMES=("${GENOMES[@]:1}")
+
 echo $( currentTime )  ": Read file" $sampleTab
 echo "	Number of submitted runs:	" $( numbUniqItems "${RUNS[@]}" )
 echo "	Number of submitted libraries:	" $( numbUniqItems "${LIBRARIES[@]}" )
 echo "	Number of submitted samples:	" $( numbUniqItems "${SAMPLES[@]}" )
 echo "	Number of submitted species:	" $( numbUniqItems "${SPECIES[@]}" )
 echo "	Number of submitted genomes:	" $( numbUniqItems "${GENOMES[@]}" )
+
+if [ $numbOfProc -gt ${#SAMPLES[@]} ]; then
+   msg="[WARNING]: number of samples is less than number of processes,"
+   msg=$msg"using number of samples as number of processes"
+   echo $msg
+   numbOfProc=${#SAMPLES[@]}
+fi
 
 # Note: I do not run fastqc here because it's going to be done after trimming
 # anyway
@@ -82,7 +98,7 @@ echo "	Number of submitted genomes:	" $( numbUniqItems "${GENOMES[@]}" )
 echo $( currentTime )  ": Started trimming reads"
 
 sampleCount=${#SAMPLES[@]}
-for (( i=1; i<$sampleCount; i+=$numbOfProc )); do 
+for (( i=0; i<$sampleCount; i+=$numbOfProc )); do 
    pids="" # processes IDs
    endInd=$(($numbOfProc - 1))
 
@@ -95,8 +111,8 @@ for (( i=1; i<$sampleCount; i+=$numbOfProc )); do
      currLib=${LIBRARIES[$position]}
      currSample=${SAMPLES[$position]}
 
-     R1path=$(find "$currRun" -type f | grep "$currLib" | grep "$currSample" | grep "$R1code")
-     R2path=$(find "$currRun" -type f | grep "$currLib" | grep "$currSample" | grep "$R2code")
+     R1path=$(find "$currRun" -type f | grep "$currLib" | grep "$currSample" | grep "$R1code" | grep $fastqExtens)
+     R2path=$(find "$currRun" -type f | grep "$currLib" | grep "$currSample" | grep "$R2code" | grep $fastqExtens)
 
      # perform trimming
      trimFastq $trimmedDir $R1path $R2path & 
@@ -111,7 +127,7 @@ done
 echo $( currentTime )  ": Started demultiplexing reads"
 
 sampleCount=${#SAMPLES[@]}
-for (( i=1; i<$sampleCount; i+=$numbOfProc )); do 
+for (( i=0; i<$sampleCount; i+=$numbOfProc )); do 
    pids="" # processes IDs
    endInd=$(($numbOfProc - 1))
 
@@ -124,12 +140,13 @@ for (( i=1; i<$sampleCount; i+=$numbOfProc )); do
      currLib=${LIBRARIES[$position]}
      currSample=${SAMPLES[$position]}
 
-     R1path=$(find "$trimmedDir" -type f | grep "$currLib" | grep "$currSample" | grep "$R1code")
-     R2path=$(find "$trimmedDir" -type f | grep "$currLib" | grep "$currSample" | grep "$R2code")
+     R1path=$(find "$trimmedDir" -type f | grep "$currSample" | grep "$R1code" | grep $fastqExtens)
+     R2path=$(find "$trimmedDir" -type f | grep "$currSample" | grep "$R2code" | grep $fastqExtens)
 
+     echo $( currentTime )  ": Started demultiplexing" $currSample
      # perform demultiplexing
      java -jar $brbseqTools Demultiplex -r1 $R1path -r2 $R2path -c $barcodefile \
-                                        -p BU???? -UMI umiLen -o $demuliplexDir &
+                                        -p BU???? -UMI $umiLen -o $demuliplexDir &
      pids="$pids $!"
    done
    waitall $pids
