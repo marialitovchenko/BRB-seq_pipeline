@@ -1,4 +1,3 @@
 #!/bin/bash
-trimGalore=/scratch/el/monthly/mlitovch/tools/trim_galore
-brbseqTools=/software/BRBseqTools.1.5.jar
-
+brbseqTools=/home/litovche/bin/BRBseqTools.1.5.jar
+MIN_READ_LENGTH=24
