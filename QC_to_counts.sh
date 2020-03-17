@@ -11,8 +11,6 @@
 # Example       : ./QC_to_counts.sh 
 # Author 	: Maria Litovchenko
 # Email         : maria.litovchenko@epfl.ch
-# TO DO		: put fool defense: if not all cells in the input table are 
-#                 filled, if there is no such file in the directory, etc
 ###############################################################################
 
 # -----------------------------------------------------------------------------
@@ -146,7 +144,7 @@ for (( i=0; i<$sampleCount; i+=$numbOfProc )); do
      echo $( currentTime )  ": Started demultiplexing" $currSample
      # perform demultiplexing
      java -jar $brbseqTools Demultiplex -r1 $R1path -r2 $R2path -c $barcodefile \
-                                        -p BU???? -UMI $umiLen -o $demuliplexDir &
+                                        -p BU -UMI $umiLen -o $demuliplexDir &
      pids="$pids $!"
    done
    waitall $pids
