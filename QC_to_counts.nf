@@ -2,7 +2,11 @@
 
 // path to the input table with samples
 sampleTabPath = 'test_input/sampleTable.csv'
-
+numbOfProc = 4
+R1code = "_R1_"
+R2code = "_R2_"
+//fastqExtens=".fastq\$\|.fq\$\|.fq.gz\$\|.fastq.gz\$"
+fastqExtens=".fastq\$\\|.fq\$"
 
 /* ----------------------------------------------------------------------------
 * Read inputs
@@ -18,22 +22,14 @@ sampleTabCh
 /* ----------------------------------------------------------------------------
 * Read inputs
 *----------------------------------------------------------------------------*/
-process sayHello {
-
-    """
-    echo 'Hello world!' > aga.txt
-    """
-
-}
-
-
 process trimReads {
     input:
     set RunID, LibraryID, SampleID, Specie, Genome from sampleTab
 
     shell:
     '''
-    R1path=$(find "!{RunID}" -type f | grep "!{LibraryID}" | grep "!{SampleID}")
+    R1path=$(find "!{RunID}" -type f | grep "!{LibraryID}" | \
+             grep "!{SampleID}" | grep "!{R1code}" | grep "!{fastqExtens}")
     echo !R1path
     '''
 }
