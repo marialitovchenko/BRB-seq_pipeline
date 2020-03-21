@@ -5,8 +5,9 @@ sampleTabPath = 'test_input/sampleTable.csv'
 numbOfProc = 4
 R1code = "_R1_"
 R2code = "_R2_"
-//fastqExtens=".fastq\$\|.fq\$\|.fq.gz\$\|.fastq.gz\$"
-fastqExtens=".fastq\$\\|.fq\$"
+outputDir = '.'
+trimmedDir=outputDir + "/trimmed"
+fastqExtens=".fastq\$\\|.fq\$\\|.fq.gz\$\\|.fastq.gz\$"
 
 /* ----------------------------------------------------------------------------
 * Read inputs
@@ -20,7 +21,7 @@ sampleTabCh
     .set { sampleTab }
 
 /* ----------------------------------------------------------------------------
-* Read inputs
+* Trim reads by quality and adapterss
 *----------------------------------------------------------------------------*/
 process trimReads {
     input:
@@ -30,6 +31,8 @@ process trimReads {
     '''
     R1path=$(find "!{RunID}" -type f | grep "!{LibraryID}" | \
              grep "!{SampleID}" | grep "!{R1code}" | grep "!{fastqExtens}")
-    echo !R1path
+    R2path=$(find "!{RunID}" -type f | grep "!{LibraryID}" | \
+             grep "!{SampleID}" | grep "!{R2code}" | grep "!{fastqExtens}")
+    trimFastq !trimmedDir !R1path !R2path
     '''
 }
