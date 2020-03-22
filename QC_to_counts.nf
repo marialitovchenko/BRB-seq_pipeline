@@ -1,5 +1,6 @@
 #!/usr/bin/env nextflow
 
+
 // path to the input table with samples
 sampleTabPath = 'test_input/sampleTable.csv'
 numbOfProc = 4
@@ -29,10 +30,16 @@ process trimReads {
 
     shell:
     '''
-    R1path=$(find "!{RunID}" -type f | grep "!{LibraryID}" | \
+    R1path=$(find "../../../""!{RunID}" -type f | grep "!{LibraryID}" | \
              grep "!{SampleID}" | grep "!{R1code}" | grep "!{fastqExtens}")
-    R2path=$(find "!{RunID}" -type f | grep "!{LibraryID}" | \
+    R2path=$(find "../../../""!{RunID}" -type f | grep "!{LibraryID}" | \
              grep "!{SampleID}" | grep "!{R2code}" | grep "!{fastqExtens}")
-    trimFastq !trimmedDir !R1path !R2path
+
+    echo "["$( date +%Y-%m-%d,%H-%M-%S )"]: Started trimming of "$R1path" & " \
+         $R2path 
+    #trim_galore -q 20 --length 20 --paired $R1path $R2path \
+                -o !trimmedDir --fastqc
+    echo "["$( date +%Y-%m-%d,%H-%M-%S )"]: Finished trimming of "$R1path" & "\
+         $R2path
     '''
 }
