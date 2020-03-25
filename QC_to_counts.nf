@@ -1,6 +1,5 @@
 #!/usr/bin/env nextflow
 
-
 // path to the input table with samples
 sampleTabPath = 'test_input/sampleTable.csv'
 numbOfProc = 4
@@ -25,14 +24,18 @@ sampleTabCh
 * Trim reads by quality and adapterss
 *----------------------------------------------------------------------------*/
 process trimReads {
+    storeDir params.outDir
+    println
     input:
     set RunID, LibraryID, SampleID, Specie, Genome from sampleTab
 
+    fastqFullPath = $workflow.projectDir + $RunID
+  
     shell:
     '''
-    R1path=$(find "../../../""!{RunID}" -type f | grep "!{LibraryID}" | \
+    R1path=$(find "!{fastqFullPath}" -type f | grep "!{LibraryID}" | \
              grep "!{SampleID}" | grep "!{R1code}" | grep "!{fastqExtens}")
-    R2path=$(find "../../../""!{RunID}" -type f | grep "!{LibraryID}" | \
+    R2path=$(find "!{workflow.projectDir}""!{RunID}" -type f | grep "!{LibraryID}" | \
              grep "!{SampleID}" | grep "!{R2code}" | grep "!{fastqExtens}")
 
     echo "["$( date +%Y-%m-%d,%H-%M-%S )"]: Started trimming of "$R1path" & " \
@@ -42,4 +45,20 @@ process trimReads {
     echo "["$( date +%Y-%m-%d,%H-%M-%S )"]: Finished trimming of "$R1path" & "\
          $R2path
     '''
+}
+
+/* ----------------------------------------------------------------------------
+* Demultiplex reads
+*----------------------------------------------------------------------------*/
+process demultiplex {
+     input:
+     set RunID, LibraryID, SampleID, Specie, Genome from sampleTab
+
+     R1path=$(find "$trimmedDir" -type f | grep "$currSample" | grep "$R1code" | grep $fastqExtens)
+     R2path=$(find "$trimmedDir" -type f | grep "$currSample" | grep "$R2code" | grep $fastqExtens)
+
+     echo $( currentTime )  ": Started demultiplexing" $currSample
+     # perform demultiplexing
+     java -jar $brbseqTools Demultiplex -r1 $R1path -r2 $R2path -c $barcodefile \
+                                        -p BU -UMI $umiLen -o $demuliplexDir &
 }
