@@ -3,11 +3,15 @@
 // path to the input table with samples
 sampleTabPath = 'test_input/sampleTable.csv'
 numbOfProc = 4
+
+fastqExtens=".fastq\$\\|.fq\$\\|.fq.gz\$\\|.fastq.gz\$"
+
 R1code = "_R1_"
 R2code = "_R2_"
-outputDir = '.'
-trimmedDir="trimmed"
-fastqExtens=".fastq\$\\|.fq\$\\|.fq.gz\$\\|.fastq.gz\$"
+
+brbseqTools="/home/litovche/bin/BRBseqTools.1.5.jar"
+barcodefile="test_input/barcodes_v3.txt"
+umiLen=10
 
 /* ----------------------------------------------------------------------------
 * Read inputs
@@ -28,8 +32,7 @@ process trimReads {
     set RunID, LibraryID, SampleID, Specie, Genome from sampleTab
 
     output:
-    file "${SampleID}_val_1.fq.gz" into trimmedR1
-    file "${SampleID}_val_2.fq.gz" into trimmedR2
+    set "${SampleID}_val_1.fq.gz", "${SampleID}_val_2.fq.gz" into trimmedFiles
 
     shell:
     '''
@@ -44,4 +47,25 @@ process trimReads {
                 --basename "!{SampleID}"
     '''
 }
+
+/* ----------------------------------------------------------------------------
+* Demultiplex reads
+*----------------------------------------------------------------------------*/
+process demultiplex {
+    input:
+    tuple file(trimmedR1), file(trimmedR2) from trimmedFiles
+
+    shell:
+    '''
+    java -jar "!{brbseqTools}" Demultiplex \
+                               -r1 "!{trimmedR1}" -r2 "!{trimmedR2}" \
+                               -c "../../../""!{barcodefile}" \
+                               -p BU -UMI "!{umiLen}" -o "."
+ 
+    '''
+}
+
+/* ----------------------------------------------------------------------------
+* Map reads to reference genome
+*----------------------------------------------------------------------------*/
 
