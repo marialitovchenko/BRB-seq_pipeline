@@ -27,6 +27,10 @@ process trimReads {
     input:
     set RunID, LibraryID, SampleID, Specie, Genome from sampleTab
 
+    output:
+    file "${SampleID}_val_1.fq.gz" into trimmedR1
+    file "${SampleID}_val_2.fq.gz" into trimmedR2
+
     shell:
     '''
     # full paths for R1 and R2
@@ -35,11 +39,9 @@ process trimReads {
     R2path=$(find "../../../""!{RunID}" -type f | grep "!{LibraryID}" | \
              grep "!{SampleID}" | grep "!{R2code}" | grep "!{fastqExtens}")
 
-    # create trimmed directory, if yet doesn't exist
-    mkdir -p  "!{trimmedDir}"
-
-    trim_galore -q 20 --length 20 --paired $R1path $R2path \
-                -o "!{trimmedDir}" --fastqc
+    # perform trimming with trim galore
+    trim_galore -q 20 --length 20 --paired $R1path $R2path --fastqc \
+                --basename "!{SampleID}"
     '''
 }
 
