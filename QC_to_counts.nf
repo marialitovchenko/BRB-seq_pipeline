@@ -59,8 +59,7 @@ process demultiplex {
           path(trimmedR1), path(trimmedR2) from trimmedFiles
 
     output:
-    tuple RunID, LibraryID, SampleID, Specie, Genome,
-          trimmedR1, trimmedR2, '*.fastq.gz' into letters    
+    file '*.fastq.gz' into demultiplexBundle 
 
     shell:
     '''
@@ -69,6 +68,26 @@ process demultiplex {
                                -c "../../../""!{barcodefile}" \
                                -p BU -UMI "!{umiLen}" -o "."
  
+    '''
+}
+
+
+
+process mapWithSTAR {
+    input:
+    file demultiplexList from demultiplexBundle.collect()
+
+    shell:
+    '''
+    for fastqFile in "!{demultiplexList}"
+    do
+        echo STAR --runMode alignReads --runThreadN 4 \
+                  --genomeDir aga \
+                  --outFilterMultimapNmax 1 \
+                  --readFilesCommand zcat \
+                  --outSAMtype BAM SortedByCoordinate \
+                  --readFilesIn \$fastqFile
+    done
     '''
 }
 
