@@ -32,7 +32,9 @@ process trimReads {
     set RunID, LibraryID, SampleID, Specie, Genome from sampleTab
 
     output:
-    set "${SampleID}_val_1.fq.gz", "${SampleID}_val_2.fq.gz" into trimmedFiles
+    tuple RunID, LibraryID, SampleID, Specie, Genome, 
+          "${SampleID}_val_1.fq.gz", 
+          "${SampleID}_val_2.fq.gz" into trimmedFiles
 
     shell:
     '''
@@ -53,7 +55,12 @@ process trimReads {
 *----------------------------------------------------------------------------*/
 process demultiplex {
     input:
-    tuple file(trimmedR1), file(trimmedR2) from trimmedFiles
+    tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+          path(trimmedR1), path(trimmedR2) from trimmedFiles
+
+    output:
+    tuple RunID, LibraryID, SampleID, Specie, Genome,
+          trimmedR1, trimmedR2, '*.fastq.gz' into letters    
 
     shell:
     '''
@@ -64,8 +71,4 @@ process demultiplex {
  
     '''
 }
-
-/* ----------------------------------------------------------------------------
-* Map reads to reference genome
-*----------------------------------------------------------------------------*/
 
