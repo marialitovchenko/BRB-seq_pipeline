@@ -71,12 +71,27 @@ process demultiplex {
     '''
 }
 
+/* ----------------------------------------------------------------------------
+* Map reads to reference genome with STAR
+*----------------------------------------------------------------------------*/
 process mapWithStar {
-    input: val(x) from demultiplexBundle.flatMap()
+    input: 
+    val(demultiplexFq) from demultiplexBundle.flatMap()
 
-    output: stdout resultB
+    // STAR is hungry for memory, so I give more
+    memory { 2.GB * task.attempt }
+    time { 1.hour * task.attempt }
+    // tries 3 times, gives us afterwards
+    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+    maxRetries 3
 
-    """
-    echo $x
-    """
+    shell:
+    '''
+    STAR --runMode alignReads --runThreadN 1 \
+                  --genomeDir /home/litovche/Documents/RefGen/chr21human/ \
+                  --outFilterMultimapNmax 1 \
+                  --readFilesCommand zcat \
+                  --outSAMtype BAM SortedByCoordinate \
+                  --readFilesIn "!{demultiplexFq}"
+    '''
 }
