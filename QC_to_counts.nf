@@ -85,6 +85,9 @@ process mapWithStar {
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
+    output:
+    path '*.sortedByCoord.out.bam' into mappedBundle
+
     shell:
     '''
     STAR --runMode alignReads --runThreadN 1 \
@@ -95,3 +98,4 @@ process mapWithStar {
                   --readFilesIn "!{demultiplexFq}"
     '''
 }
+
