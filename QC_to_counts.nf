@@ -59,8 +59,6 @@ process demultiplex {
           path(trimmedR1), path(trimmedR2) from trimmedFiles
 
     output:
-    tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-          path(trimmedR1), path(trimmedR2) into metaData
     path('*.fastq.gz') into demultiplexBundle
 
     shell:
@@ -79,8 +77,6 @@ process demultiplex {
 *----------------------------------------------------------------------------*/
 process mapWithStar {
     input:
-    tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-          path(trimmedR1), path(trimmedR2) from metaData
     val(demultiplexFq) from demultiplexBundle.flatMap()
 
     // STAR is hungry for memory, so I give more
