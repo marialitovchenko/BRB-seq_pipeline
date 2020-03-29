@@ -22,7 +22,7 @@ sampleTabCh
     .splitCsv(header: true, sep:'\t')
     .map{ row -> tuple(row.RunID, row.LibraryID, row.SampleID, row.Specie, 
                        row.Genome) }
-    .set { sampleTab }
+    .set{ sampleTab }
 
 /* ----------------------------------------------------------------------------
 * Trim reads by quality and adapterss
@@ -59,7 +59,7 @@ process demultiplex {
           path(trimmedR1), path(trimmedR2) from trimmedFiles
 
     output:
-    file '*.fastq.gz' into demultiplexBundle 
+    path '*.fastq.gz' into demultiplexBundle 
 
     shell:
     '''
@@ -71,23 +71,12 @@ process demultiplex {
     '''
 }
 
+process mapWithStar {
+    input: val(x) from demultiplexBundle.flatMap()
 
+    output: stdout resultB
 
-process mapWithSTAR {
-    input:
-    file demultiplexList from demultiplexBundle.collect()
-
-    shell:
-    '''
-    for fastqFile in "!{demultiplexList}"
-    do
-        echo STAR --runMode alignReads --runThreadN 4 \
-                  --genomeDir aga \
-                  --outFilterMultimapNmax 1 \
-                  --readFilesCommand zcat \
-                  --outSAMtype BAM SortedByCoordinate \
-                  --readFilesIn \$fastqFile
-    done
-    '''
+    """
+    echo $x
+    """
 }
-
