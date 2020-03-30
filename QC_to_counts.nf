@@ -43,7 +43,6 @@ process trimReads {
              grep "!{SampleID}" | grep "!{R1code}" | grep "!{fastqExtens}")
     R2path=$(find "../../../""!{RunID}" -type f | grep "!{LibraryID}" | \
              grep "!{SampleID}" | grep "!{R2code}" | grep "!{fastqExtens}")
-
     # perform trimming with trim galore
     trim_galore -q 20 --length 20 --paired $R1path $R2path --fastqc \
                 --basename "!{SampleID}"
@@ -59,7 +58,9 @@ process demultiplex {
           path(trimmedR1), path(trimmedR2) from trimmedFiles
 
     output:
-    path('*.fastq.gz') into demultiplexBundle
+    set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+        path(trimmedR1), path(trimmedR2),
+        path('*.fastq.gz') into demultiplexBundle
 
     shell:
     '''
@@ -71,33 +72,20 @@ process demultiplex {
     '''
 }
 
+// fork into #(of demultiplexed file) channels, preserving metadata
+demultiplexBundle
+    .flatMap { item ->
+        RunID = item[0];
+        LibraryID = item[1];
+        SampleID = item[2];
+        Specie = item[3];
+        Genome = item[4];
+        trimmedR1 = item[5];
+        trimmedR2 = item[6];
+        files  = item[7];
+        files.collect { onefile -> return [ RunID, LibraryID, SampleID, Specie,
+                        Genome, trimmedR1, trimmedR2, onefile ] }
+    }
+    .set { demultiplexFiles }
 
-/* ----------------------------------------------------------------------------
-* Map reads to reference genome with STAR
-*----------------------------------------------------------------------------*/
-process mapWithStar {
-    input:
-    val(demultiplexFq) from demultiplexBundle.flatMap()
-
-    // STAR is hungry for memory, so I give more
-    memory { 2.GB * task.attempt }
-    time { 1.hour * task.attempt }
-    // tries 3 times, gives us afterwards
-    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
-    maxRetries 3
-
-    output:
-    path '*.sortedByCoord.out.bam' into mappedBundle
-
-    shell:
-    '''
-    STAR --runMode alignReads --runThreadN 1 \
-                  --genomeDir /home/litovche/Documents/RefGen/chr21human/ \
-                  --outFilterMultimapNmax 1 \
-                  --readFilesCommand zcat \
-                  --outSAMtype BAM SortedByCoordinate \
-                  --readFilesIn "!{demultiplexFq}"
-
-    '''
-}
 
