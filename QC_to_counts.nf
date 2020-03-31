@@ -88,15 +88,10 @@ demultiplexBundle
     }
     .set { demultiplexFiles }
 
-demultiplexFiles.println()
-
 /* ----------------------------------------------------------------------------
 * Map reads to reference genome with STAR
 *----------------------------------------------------------------------------*/
 process mapWithStar {
-    input:
-    val(demultiplexFq) from demultiplexBundle.flatMap()
-
     // STAR is hungry for memory, so I give more
     memory { 2.GB * task.attempt }
     time { 1.hour * task.attempt }
@@ -104,19 +99,25 @@ process mapWithStar {
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
+    input:
+    set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+        path(trimmedR1), path(trimmedR2), 
+        path(demultiplexfq) from demultiplexFiles
+
     output:
-    path '*.sortedByCoord.out.bam' into mappedBundle
+    set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+        path(trimmedR1), path(trimmedR2), path(demultiplexfq), 
+        path('*.sortedByCoord.out.bam') into mappedBundle
 
-    shell:
-    '''
+    script:
+    """
     STAR --runMode alignReads --runThreadN 1 \
-                  --genomeDir /home/litovche/Documents/RefGen/chr21human/ \
-                  --outFilterMultimapNmax 1 \
-                  --readFilesCommand zcat \
-                  --outSAMtype BAM SortedByCoordinate \
-                  --readFilesIn "!{demultiplexFq}"
-
-    '''
+                    --genomeDir /home/litovche/Documents/RefGen/chr21human/ \
+                    --outFilterMultimapNmax 1 \
+                    --readFilesCommand zcat \
+                    --outSAMtype BAM SortedByCoordinate \
+                    --readFilesIn "!{demultiplexfq}"
+    """
 }
 
 mappedBundle
@@ -128,11 +129,10 @@ mappedBundle
         Genome = item[4];
         trimmedR1 = item[5];
         trimmedR2 = item[6];
-        demultiplexFq  = item[7];
-        files = item[8];
+        demultiplexfq  = item[7];
+        files  = item[8];
         files.collect { onefile -> return [ RunID, LibraryID, SampleID, Specie,
-                        Genome, trimmedR1, trimmedR2, demultiplexFq, onefile ] }
+                        Genome, trimmedR1, trimmedR2, demultiplexfq, onefile ]}
     }
     .set { mappedFiles }
-
 
