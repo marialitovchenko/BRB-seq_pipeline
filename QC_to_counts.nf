@@ -13,6 +13,8 @@ brbseqTools="/home/litovche/bin/BRBseqTools.1.5.jar"
 barcodefile="test_input/barcodes_v3.txt"
 umiLen=10
 
+gtfPath="/home/litovche/Documents/RefGen/chr21human/hg38.refGene.gtf"
+
 /* ----------------------------------------------------------------------------
 * Read inputs
 *----------------------------------------------------------------------------*/
@@ -136,3 +138,19 @@ mappedBundle
     }
     .set { mappedFiles }
 
+/* ----------------------------------------------------------------------------
+* Count reads
+*----------------------------------------------------------------------------*/
+process countReads {
+    input:
+        set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+        path(trimmedR1), path(trimmedR2), path(demultiplexfq),
+        path(mappedBam) from mappedFiles
+
+    shell:
+    '''
+    java -jar "!{brbseqTools}" CreateDGEMatrix -f "!{trimmedR1}" \
+         -b "!{mappedBam}" -c "../../../""!{barcodefile}" \
+         -o "." -gtf "!{gtfPath}" -p BU -UMI "!{umiLen}"
+    '''
+}
