@@ -146,7 +146,7 @@ process countReads {
 
     shell:
     '''
-    java -jar "!{brbseqTools}" CreateDGEMatrix -f "!{trimmedR1}" \
+    java -jar -Xmx2g "!{brbseqTools}" CreateDGEMatrix -f "!{trimmedR1}" \
          -b "!{mappedBam}" -c "../../../""!{barcodefile}" \
          -o "." -gtf "!{gtfPath}" -p BU -UMI "!{umiLen}"
     '''
