@@ -109,7 +109,8 @@ process mapWithStar {
     output:
     set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
         path(trimmedR1), path(trimmedR2), path(demultiplexfq), 
-        path('*.sortedByCoord.out.bam') into mappedBundle
+        path('*.sortedByCoord.out.bam'), 
+        path('Log.final.out') into mappedBundle
 
     shell:
     '''
@@ -135,13 +136,13 @@ process countReads {
 
     input:
         set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-        path(trimmedR1), path(trimmedR2), path(demultiplexfq),
-        path(mappedBam) from mappedBundle
+        path(trimmedR1), path(trimmedR2), path(demultiplexfq), path(mappedBam),
+        path(mappedLog) from mappedBundle
 
     output:
     set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
         path(trimmedR1), path(trimmedR2), path(demultiplexfq), path(mappedBam),
-        path('*.dge.umis.detailed.txt'),
+        path(mappedLog), path('*.dge.umis.detailed.txt'),
         path('*.dge.reads.detailed.txt') into countedBundle
 
     shell:
@@ -152,7 +153,9 @@ process countReads {
     '''
 }
 
-countedBundle
-    .println()
 
+countedBundle
+    .collect { item ->
+               aga = item[11]; }
+    .set(countsFiles)
 
