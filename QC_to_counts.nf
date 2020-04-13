@@ -15,6 +15,9 @@ umiLen=10
 
 gtfPath="/home/litovche/Documents/RefGen/chr21human/hg38.refGene.gtf"
 
+rInputTab="/home/litovche/Desktop/BRB-seq_pipeline/rInputTab.txt"
+
+
 /* ----------------------------------------------------------------------------
 * Read inputs
 *----------------------------------------------------------------------------*/
@@ -154,9 +157,17 @@ process countReads {
 }
 
 
+/* ----------------------------------------------------------------------------
+* Output paths to files in the table for R
+*----------------------------------------------------------------------------*/
 countedBundle
     .flatMap { item ->
-        forPrint = item[7].toString() + ' ' + item[1].toString();
+        item[0].toString() + ' ' + item[1].toString() + ' ' + 
+        item[2].toString() + ' ' + item[3].toString() + ' ' + 
+        item[4].toString() + ' ' + item[5].toString() + ' ' + 
+        item[6].toString() + ' ' + item[7].toString() + ' ' + 
+        item[8].toString() + ' ' + item[9].toString() + ' ' + 
+        item[10].toString() + ' ' + item[11].toString() 
     }
-    .collectFile(name: 'sample.AGA2.txt', newLine: true)
+    .collectFile(name: rInputTab, newLine: true)
     .set{fileForR}
