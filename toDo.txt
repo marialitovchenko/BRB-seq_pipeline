@@ -6,3 +6,5 @@ put proper adapter sequences to cut adapt, they are only in R2
 -G ^AAGCAGTGGTATCAACGCAGAGTACATGGG -B "A{150}"
 -m 20
 
+do a separate file with all parameters of all methods
+in the R script, give all parameters for the run at the end
