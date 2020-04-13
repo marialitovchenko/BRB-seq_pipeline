@@ -155,7 +155,8 @@ process countReads {
 
 
 countedBundle
-    .collect { item ->
-               aga = item[11]; }
-    .set(countsFiles)
-
+    .flatMap { item ->
+        forPrint = item[7].toString() + ' ' + item[1].toString();
+    }
+    .collectFile(name: 'sample.AGA2.txt', newLine: true)
+    .set{fileForR}
