@@ -68,13 +68,81 @@ process trimReads {
 * deduplication directly to mapping and read counting, and second channel will
 * go through demultiplexing and mapping in order to get mapping statistics
 *----------------------------------------------------------------------------*/
-trimReads
+trimmedFiles
      .into{ trimmedForCounts; trimmedForMapStats }
 
 /* ----------------------------------------------------------------------------
 * !!! PROCESSING 1: FROM TRIMMED INTO COUNTS, no deduplication
 *----------------------------------------------------------------------------*/
 
+/* ----------------------------------------------------------------------------
+* A) Map trimmed reads to reference genome with STAR
+*----------------------------------------------------------------------------*/
+process mapTrimmedWithStar {
+    publishDir "trimmedMapped", 
+               saveAs: { LibraryID + "_" + SampleID + "_" + Genome + 
+                        "_Aligned.sortedByCoord.out.bam" },
+               pattern: '{*.sortedByCoord.out.bam}'
+    cpus 4
+
+    // STAR is hungry for memory, so I give more; tries 3 times, gives us
+    // afterwards
+    memory { 2.GB * task.attempt }
+    time { 1.hour * task.attempt }
+    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+    maxRetries 3
+
+    input:
+    set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+        path(trimmedR1), path(trimmedR2) from trimmedForCounts
+
+    output:
+    set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+        path(trimmedR1), path(trimmedR2),
+        path('*.sortedByCoord.out.bam') into trimmedMappedBundle
+
+    shell:
+    '''
+    STAR --runMode alignReads --runThreadN 4 \
+                    --genomeDir /home/litovche/Documents/RefGen/chr21human/ \
+                    --outFilterMultimapNmax 1 \
+                    --readFilesCommand zcat \
+                    --outSAMtype BAM SortedByCoordinate \
+                    --readFilesIn "!{trimmedR2}"
+    '''
+}
+
+/* ----------------------------------------------------------------------------
+* B) Count reads in mapped trimmed bams
+*----------------------------------------------------------------------------*/
+process countReads {
+    publishDir "counts/${LibraryID}/${SampleID}",
+               pattern: '{*.dge.umis.detailed.txt, *.dge.reads.detailed.txt}'
+
+    // Hungry for memory, so I give more, tries 3 times, gives us afterwards
+    memory { 2.GB * task.attempt }
+    time { 1.hour * task.attempt }
+    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+    maxRetries 3
+
+    input:
+    tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+          path(trimmedR1), path(trimmedR2), 
+          path(mappedBam) from trimmedMappedBundle
+
+    output:
+    tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+          path(trimmedR1), path(trimmedR2), path(mappedBam),
+          path('*.dge.umis.detailed.txt'),
+          path('*.dge.reads.detailed.txt') into countedBundle
+
+    shell:
+    '''
+    java -jar -Xmx2g "!{brbseqTools}" CreateDGEMatrix -f "!{trimmedR1}" \
+         -b "!{mappedBam}" -c "../../../""!{barcodefile}" \
+         -o "." -gtf "!{gtfPath}" -p BU -UMI "!{umiLen}"
+    '''
+}
 
 /* ----------------------------------------------------------------------------
 * !!! PROCESSING 2: DEMULTIPLEXING TRIMMED, MAPPING, GETTING MAP STATS
@@ -123,13 +191,12 @@ demultiplexBundle
 
 /* ----------------------------------------------------------------------------
 * Map demultiplexed reads to reference genome with STAR
-*
 *----------------------------------------------------------------------------*/
 process mapWithStar {
-    publishDir "mapped/${LibraryID}/${SampleID}", 
-               pattern: '{*.sortedByCoord.out.bam, *.Log.final.out}'
+    publishDir "mapped/${LibraryID}/${SampleID}",
+               pattern: '{*.sortedByCoord.out.bam, *._Log.final.out}'
 
-    // STAR is hungry for memory, so I give more; tries 3 times, gives us 
+    // STAR is hungry for memory, so I give more; tries 3 times, gives us
     // afterwards
     memory { 2.GB * task.attempt }
     time { 1.hour * task.attempt }
@@ -137,15 +204,15 @@ process mapWithStar {
     maxRetries 3
 
     input:
-    set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-        path(trimmedR1), path(trimmedR2),
-        path(demultiplexfq) from demultiplexFiles
+    tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+          path(trimmedR1), path(trimmedR2),
+          path(demultiplexfq) from demultiplexFiles
 
     output:
-    set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-        path(trimmedR1), path(trimmedR2), path(demultiplexfq),
-        path('*.sortedByCoord.out.bam'),
-        path('*_Log.final.out') into mappedBundle
+    tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+          path(trimmedR1), path(trimmedR2), path(demultiplexfq),
+          path('*.sortedByCoord.out.bam'),
+          path('*_Log.final.out') into mappedBundle
 
     shell:
     '''
@@ -160,50 +227,3 @@ process mapWithStar {
                     --readFilesIn "!{demultiplexfq}"
     '''
 }
-
-/* ----------------------------------------------------------------------------
-* Count reads
-*----------------------------------------------------------------------------*/
-process countReads {
-    publishDir "counts/${LibraryID}/${SampleID}",
-               pattern: '{*.dge.umis.detailed.txt, *.dge.reads.detailed.txt}'
-
-    // Hungry for memory, so I give more, tries 3 times, gives us afterwards
-    memory { 2.GB * task.attempt }
-    time { 1.hour * task.attempt }
-    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
-    maxRetries 3
-
-    input:
-        set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-        path(trimmedR1), path(trimmedR2), path(demultiplexfq), path(mappedBam),
-        path(mappedLog) from mappedBundle
-
-    output:
-    set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-        path(trimmedR1), path(trimmedR2), path(demultiplexfq), path(mappedBam),
-        path(mappedLog), path('*.dge.umis.detailed.txt'),
-        path('*.dge.reads.detailed.txt') into countedBundle
-
-    shell:
-    '''
-    java -jar -Xmx2g "!{brbseqTools}" CreateDGEMatrix -f "!{trimmedR1}" \
-         -b "!{mappedBam}" -c "../../../""!{barcodefile}" \
-         -o "." -gtf "!{gtfPath}" -p BU -UMI "!{umiLen}"
-    '''
-}
-
-/* ----------------------------------------------------------------------------
-* Output paths to files in the table for R
-*----------------------------------------------------------------------------*/
-countedBundle
-    .flatMap { item ->
-        item[0].toString() + ' ' + item[1].toString() + ' ' +
-        item[2].toString() + ' ' + item[3].toString() + ' ' +
-        item[4].toString() + ' ' + item[5].toString() + ' ' +
-        item[6].toString() + ' ' + item[7].toString() + ' ' +
-        item[8].toString() + ' ' + item[9].toString() + ' ' +
-        item[10].toString() + ' ' + item[11].toString()
-    }
-    .collectFile(name: rInputTab, newLine: true)
-    .set{fileForR}

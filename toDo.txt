@@ -2,6 +2,8 @@ put fool defense: if not all cells in the input table are filled, if there is no
 
 check, that library ID is unique and all combinations of IDs I give a name to
 
+give dynamic number of processes to STAR
+
 put proper adapter sequences to cut adapt, they are only in R2
 -b GTCTCGTGGGCTCGG -b TCGTCGGCAGCGTC -b AGATGTGTATAAGAGA -b TCTCTTATACACATCT
 13:39
