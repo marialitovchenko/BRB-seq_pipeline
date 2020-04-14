@@ -19,7 +19,7 @@ rInputTab="/home/litovche/Desktop/BRB-seq_pipeline/rInputTab.txt"
 
 
 /* ----------------------------------------------------------------------------
-* Read inputs
+* Read input table
 *----------------------------------------------------------------------------*/
 // create channel which reads from the input table with samples
 sampleTabCh = Channel.fromPath( sampleTabPath )
@@ -30,7 +30,7 @@ sampleTabCh
     .set{ sampleTab }
 
 /* ----------------------------------------------------------------------------
-* Trim reads by quality and adapterss
+* Trim reads by quality and adapterss with trimgalore
 *----------------------------------------------------------------------------*/
 process trimReads {
     publishDir "trimmed", pattern: '*_val_*.fq.gz' 
@@ -57,6 +57,29 @@ process trimReads {
 }
 
 /* ----------------------------------------------------------------------------
+* !!! IMPORTANT NOTE: !!!
+* With use of BRB-seq tools, it is not nessecary to demultiplex and map files
+* one by one in order to get to the count table. Count table can be obtained
+* firectly from maped trimmed file. However, it's not possible then to derive
+* percentage of unmapped reads, multiple mapping percentage, etc, from it. This
+* is why we still need to map the individual demultiplexed files. 
+*
+* Therefore, here I split channel into 2, there first will go without 
+* deduplication directly to mapping and read counting, and second channel will
+* go through demultiplexing and mapping in order to get mapping statistics
+*----------------------------------------------------------------------------*/
+trimReads
+     .into{ trimmedForCounts; trimmedForMapStats }
+
+/* ----------------------------------------------------------------------------
+* !!! PROCESSING 1: FROM TRIMMED INTO COUNTS, no deduplication
+*----------------------------------------------------------------------------*/
+
+
+/* ----------------------------------------------------------------------------
+* !!! PROCESSING 2: DEMULTIPLEXING TRIMMED, MAPPING, GETTING MAP STATS
+*----------------------------------------------------------------------------*/
+/* ----------------------------------------------------------------------------
 * Demultiplex reads
 *----------------------------------------------------------------------------*/
 process demultiplex {
@@ -64,7 +87,7 @@ process demultiplex {
 
     input:
     tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-          path(trimmedR1), path(trimmedR2) from trimmedFiles
+          path(trimmedR1), path(trimmedR2) from trimmedForMapStats
 
     output:
     tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
@@ -97,8 +120,10 @@ demultiplexBundle
     }
     .set { demultiplexFiles }
 
+
 /* ----------------------------------------------------------------------------
-* Map reads to reference genome with STAR
+* Map demultiplexed reads to reference genome with STAR
+*
 *----------------------------------------------------------------------------*/
 process mapWithStar {
     publishDir "mapped/${LibraryID}/${SampleID}", 
