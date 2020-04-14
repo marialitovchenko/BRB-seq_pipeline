@@ -33,8 +33,10 @@ sampleTabCh
 * Trim reads by quality and adapterss
 *----------------------------------------------------------------------------*/
 process trimReads {
+    publishDir "trimmed", pattern: '*_val_*.fq.gz' 
+
     input:
-    set RunID, LibraryID, SampleID, Specie, Genome from sampleTab
+    tuple RunID, LibraryID, SampleID, Specie, Genome from sampleTab
 
     output:
     tuple RunID, LibraryID, SampleID, Specie, Genome, 
@@ -58,14 +60,16 @@ process trimReads {
 * Demultiplex reads
 *----------------------------------------------------------------------------*/
 process demultiplex {
+    publishDir "demultiplexed/${LibraryID}/${SampleID}", pattern: '*.fastq.gz'
+
     input:
     tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
           path(trimmedR1), path(trimmedR2) from trimmedFiles
 
     output:
-    set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-        path(trimmedR1), path(trimmedR2),
-        path('*.fastq.gz') into demultiplexBundle
+    tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+          path(trimmedR1), path(trimmedR2),
+          path('*.fastq.gz') into demultiplexBundle
 
     shell:
     '''
@@ -73,7 +77,7 @@ process demultiplex {
                                -r1 "!{trimmedR1}" -r2 "!{trimmedR2}" \
                                -c "../../../""!{barcodefile}" \
                                -p BU -UMI "!{umiLen}" -o "."
- 
+
     '''
 }
 
@@ -97,31 +101,37 @@ demultiplexBundle
 * Map reads to reference genome with STAR
 *----------------------------------------------------------------------------*/
 process mapWithStar {
-    // STAR is hungry for memory, so I give more
+    publishDir "mapped/${LibraryID}/${SampleID}", 
+               pattern: '{*.sortedByCoord.out.bam, *.Log.final.out}'
+
+    // STAR is hungry for memory, so I give more; tries 3 times, gives us 
+    // afterwards
     memory { 2.GB * task.attempt }
     time { 1.hour * task.attempt }
-    // tries 3 times, gives us afterwards
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
     input:
     set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-        path(trimmedR1), path(trimmedR2), 
+        path(trimmedR1), path(trimmedR2),
         path(demultiplexfq) from demultiplexFiles
 
     output:
     set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-        path(trimmedR1), path(trimmedR2), path(demultiplexfq), 
-        path('*.sortedByCoord.out.bam'), 
-        path('Log.final.out') into mappedBundle
+        path(trimmedR1), path(trimmedR2), path(demultiplexfq),
+        path('*.sortedByCoord.out.bam'),
+        path('*_Log.final.out') into mappedBundle
 
     shell:
     '''
+    mapPrefName=`basename "!{demultiplexfq}" | sed 's/[.].*//g'`
+    mapPrefName="!{LibraryID}""_""!{SampleID}""_"$mapPrefName"_"
     STAR --runMode alignReads --runThreadN 1 \
                     --genomeDir /home/litovche/Documents/RefGen/chr21human/ \
                     --outFilterMultimapNmax 1 \
                     --readFilesCommand zcat \
                     --outSAMtype BAM SortedByCoordinate \
+                    --outFileNamePrefix $mapPrefName \
                     --readFilesIn "!{demultiplexfq}"
     '''
 }
@@ -130,10 +140,12 @@ process mapWithStar {
 * Count reads
 *----------------------------------------------------------------------------*/
 process countReads {
-    // hungry for memory, so I give more
+    publishDir "counts/${LibraryID}/${SampleID}",
+               pattern: '{*.dge.umis.detailed.txt, *.dge.reads.detailed.txt}'
+
+    // Hungry for memory, so I give more, tries 3 times, gives us afterwards
     memory { 2.GB * task.attempt }
     time { 1.hour * task.attempt }
-    // tries 3 times, gives us afterwards
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
@@ -156,18 +168,17 @@ process countReads {
     '''
 }
 
-
 /* ----------------------------------------------------------------------------
 * Output paths to files in the table for R
 *----------------------------------------------------------------------------*/
 countedBundle
     .flatMap { item ->
-        item[0].toString() + ' ' + item[1].toString() + ' ' + 
-        item[2].toString() + ' ' + item[3].toString() + ' ' + 
-        item[4].toString() + ' ' + item[5].toString() + ' ' + 
-        item[6].toString() + ' ' + item[7].toString() + ' ' + 
-        item[8].toString() + ' ' + item[9].toString() + ' ' + 
-        item[10].toString() + ' ' + item[11].toString() 
+        item[0].toString() + ' ' + item[1].toString() + ' ' +
+        item[2].toString() + ' ' + item[3].toString() + ' ' +
+        item[4].toString() + ' ' + item[5].toString() + ' ' +
+        item[6].toString() + ' ' + item[7].toString() + ' ' +
+        item[8].toString() + ' ' + item[9].toString() + ' ' +
+        item[10].toString() + ' ' + item[11].toString()
     }
     .collectFile(name: rInputTab, newLine: true)
     .set{fileForR}
