@@ -60,92 +60,18 @@ process trimReads {
 * !!! IMPORTANT NOTE: !!!
 * With use of BRB-seq tools, it is not nessecary to demultiplex and map files
 * one by one in order to get to the count table. Count table can be obtained
-* firectly from maped trimmed file. However, it's not possible then to derive
+* directly from maped trimmed file. However, it's not possible then to derive
 * percentage of unmapped reads, multiple mapping percentage, etc, from it. This
 * is why we still need to map the individual demultiplexed files. But it 
 * doesn't make sense to do two mapping runs: for just trimmed bam and for the
-* demultiplexed one, it will take twice much time. So, I will demultiplex and
+* demultiplexed one, it will take twice much time. For example, just trimming +
+* mapping + counting takes 14 minutes for the test file, and this is without
+* demultiplexing and mapping individual files. On the other hand, trimming +
+* demultiplexing + mapping + counting takes 26 minutes in total. This is due to
+* the higher degree of parallelization. So, I will demultiplex and
 * map and count and then constract one count table per library.
 *----------------------------------------------------------------------------*/
-trimmedFiles
-     .into{ trimmedForCounts; trimmedForMapStats }
 
-/* ----------------------------------------------------------------------------
-* !!! PROCESSING 1: FROM TRIMMED INTO COUNTS, no deduplication
-*----------------------------------------------------------------------------*/
-
-/* ----------------------------------------------------------------------------
-* A) Map trimmed reads to reference genome with STAR
-*----------------------------------------------------------------------------*/
-process mapTrimmedWithStar {
-    publishDir "trimmedMapped", 
-               saveAs: { LibraryID + "_" + SampleID + "_" + Genome + 
-                        "_Aligned.sortedByCoord.out.bam" },
-               pattern: '{*.sortedByCoord.out.bam}'
-    cpus 4
-
-    // STAR is hungry for memory, so I give more; tries 3 times, gives us
-    // afterwards
-    memory { 2.GB * task.attempt }
-    time { 1.hour * task.attempt }
-    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
-    maxRetries 3
-
-    input:
-    set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-        path(trimmedR1), path(trimmedR2) from trimmedForCounts
-
-    output:
-    set val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-        path(trimmedR1), path(trimmedR2),
-        path('*.sortedByCoord.out.bam') into trimmedMappedBundle
-
-    shell:
-    '''
-    STAR --runMode alignReads --runThreadN 4 \
-                    --genomeDir /home/litovche/Documents/RefGen/chr21human/ \
-                    --outFilterMultimapNmax 1 \
-                    --readFilesCommand zcat \
-                    --outSAMtype BAM SortedByCoordinate \
-                    --readFilesIn "!{trimmedR2}"
-    '''
-}
-
-/* ----------------------------------------------------------------------------
-* B) Count reads in mapped trimmed bams
-*----------------------------------------------------------------------------*/
-process countReads {
-    publishDir "counts/${LibraryID}/${SampleID}",
-               pattern: '{*.dge.umis.detailed.txt, *.dge.reads.detailed.txt}'
-
-    // Hungry for memory, so I give more, tries 3 times, gives us afterwards
-    memory { 2.GB * task.attempt }
-    time { 1.hour * task.attempt }
-    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
-    maxRetries 3
-
-    input:
-    tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-          path(trimmedR1), path(trimmedR2), 
-          path(mappedBam) from trimmedMappedBundle
-
-    output:
-    tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-          path(trimmedR1), path(trimmedR2), path(mappedBam),
-          path('*.dge.umis.detailed.txt'),
-          path('*.dge.reads.detailed.txt') into countedBundle
-
-    shell:
-    '''
-    java -jar -Xmx2g "!{brbseqTools}" CreateDGEMatrix -f "!{trimmedR1}" \
-         -b "!{mappedBam}" -c "../../../""!{barcodefile}" \
-         -o "." -gtf "!{gtfPath}" -p BU -UMI "!{umiLen}"
-    '''
-}
-
-/* ----------------------------------------------------------------------------
-* !!! PROCESSING 2: DEMULTIPLEXING TRIMMED, MAPPING, GETTING MAP STATS
-*----------------------------------------------------------------------------*/
 /* ----------------------------------------------------------------------------
 * Demultiplex reads
 *----------------------------------------------------------------------------*/
@@ -154,7 +80,7 @@ process demultiplex {
 
     input:
     tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
-          path(trimmedR1), path(trimmedR2) from trimmedForMapStats
+          path(trimmedR1), path(trimmedR2) from trimmedFiles
 
     output:
     tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
@@ -224,5 +150,37 @@ process mapWithStar {
                     --outSAMtype BAM SortedByCoordinate \
                     --outFileNamePrefix $mapPrefName \
                     --readFilesIn "!{demultiplexfq}"
+    '''
+}
+
+/* ----------------------------------------------------------------------------
+* Count reads in demultiplexed trimmed bams
+*----------------------------------------------------------------------------*/
+process countReads {
+    publishDir "counts/${LibraryID}/${SampleID}",
+               pattern: '{*.dge.umis.detailed.txt, *.dge.reads.detailed.txt}'
+
+    // Hungry for memory, so I give more, tries 3 times, gives us afterwards
+    memory { 2.GB * task.attempt }
+    time { 1.hour * task.attempt }
+    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+    maxRetries 3
+
+    input:
+    tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+          path(trimmedR1), path(trimmedR2), path(demultiplexfq),
+          path(mappedBam), path(mappedLog) from mappedBundle
+
+    output:
+    tuple val(RunID), val(LibraryID), val(SampleID), val(Specie), val(Genome),
+          path(trimmedR1), path(trimmedR2), path(demultiplexfq),
+          path(mappedBam), path(mappedLog), path('*.dge.umis.detailed.txt'),
+          path('*.dge.reads.detailed.txt') into countedBundle
+
+    shell:
+    '''
+    java -jar -Xmx2g "!{brbseqTools}" CreateDGEMatrix -f "!{trimmedR1}" \
+         -b "!{mappedBam}" -c "../../../""!{barcodefile}" \
+         -o "." -gtf "!{gtfPath}" -p BU -UMI "!{umiLen}"
     '''
 }
