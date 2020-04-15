@@ -182,5 +182,10 @@ process countReads {
     java -jar -Xmx2g "!{brbseqTools}" CreateDGEMatrix -f "!{trimmedR1}" \
          -b "!{mappedBam}" -c "../../../""!{barcodefile}" \
          -o "." -gtf "!{gtfPath}" -p BU -UMI "!{umiLen}"
+    samplName=`basename "!{mappedBam}" | sed 's/_Aligned.sortedByCoord.out.bam/.count/g'`
+    mv output.dge.reads.detailed.txt $samplName".dge.reads.detailed.txt"
+    mv output.dge.reads.txt $samplName".dge.reads.txt"
+    mv output.dge.umis.detailed.txt $samplName".dge.umis.detailed.txt"
+    mv output.dge.umis.txt $samplName".dge.umis.txt"
     '''
 }
