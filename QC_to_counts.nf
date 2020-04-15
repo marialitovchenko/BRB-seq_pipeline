@@ -62,11 +62,10 @@ process trimReads {
 * one by one in order to get to the count table. Count table can be obtained
 * firectly from maped trimmed file. However, it's not possible then to derive
 * percentage of unmapped reads, multiple mapping percentage, etc, from it. This
-* is why we still need to map the individual demultiplexed files. 
-*
-* Therefore, here I split channel into 2, there first will go without 
-* deduplication directly to mapping and read counting, and second channel will
-* go through demultiplexing and mapping in order to get mapping statistics
+* is why we still need to map the individual demultiplexed files. But it 
+* doesn't make sense to do two mapping runs: for just trimmed bam and for the
+* demultiplexed one, it will take twice much time. So, I will demultiplex and
+* map and count and then constract one count table per library.
 *----------------------------------------------------------------------------*/
 trimmedFiles
      .into{ trimmedForCounts; trimmedForMapStats }
