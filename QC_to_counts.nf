@@ -214,8 +214,8 @@ process countReads {
 
     output:
     tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, trimmedR2,
-          demultiplexfq, mappedBam, mappedLog, 
-          path('*.detailed.txt') into countedBundle
+          demultiplexfq, mappedBam, mappedLog, path('*.umis.detailed.txt'), 
+          path('*.reads.detailed.txt') into countedBundle
 
     shell:
     '''
