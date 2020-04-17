@@ -20,7 +20,8 @@ R2code = "_R2_"
 
 umiLen=10
 
-rInputTab="/home/litovche/Desktop/BRB-seq_pipeline/rInputTab.txt"
+rInputTab="/home/litovche/Desktop/BRB-seq_pipeline/rInputTab.csv"
+mapStatsTab="/home/litovche/Desktop/BRB-seq_pipeline/mapStatsTab.csv"
 
 /* ----------------------------------------------------------------------------
 * Read input table
@@ -151,6 +152,51 @@ process mapWithStar {
 }
 
 /* ----------------------------------------------------------------------------
+* I will split the channel here, one will go to the aggregation of mapping
+* statistics, and the other one - into counting reads
+*----------------------------------------------------------------------------*/
+mappedBundle.into{ mappedForStats; mappedForCounts }
+
+/* ----------------------------------------------------------------------------
+* Aggregats mapping statistics
+* I'll create a string with all sample info and will append to it mapping stats
+* taken from STAR
+*----------------------------------------------------------------------------*/
+process aggregateMapStats {
+    input:
+    tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, trimmedR2,
+          demultiplexfq, mappedBam, mappedLog from mappedForStats
+
+    output:
+    stdout mappingStatsAggr
+ 
+    shell:
+    '''
+    # initial sample info
+    statsAggr=("!{RunID}")
+    statsAggr+=("!{LibraryID}")
+    statsAggr+=("!{SampleID}")
+    statsAggr+=("!{Specie}")
+    statsAggr+=("!{Genome}")
+    statsAggr+=("!{demultiplexfq}")
+
+    # append mapping stats info
+    statsAggr+=(`grep "Number of input reads" "!{mappedLog}" | sed 's/.*|//'`)
+    statsAggr+=(`grep "mapped (" "!{mappedLog}" | sed 's/ .*//'`)
+    statsAggr+=(`grep "Uniquely mapped reads number" "!{mappedLog}" | sed 's/.*|//'`)
+    statsAggr+=(`grep "Number of reads mapped to multiple loci" "!{mappedLog}" | sed 's/.*|//'`)
+    statsAggr+=(`grep "Number of reads mapped to too many loci" "!{mappedLog}" | sed 's/.*|//'`)
+    statsAggr+=(`grep "% of reads unmapped: too many mismatches" "!{mappedLog}" | sed 's/.*|//'`)
+    statsAggr+=(`grep "% of reads unmapped: too short" "!{mappedLog}" | sed 's/.*|//'`)
+    statsAggr+=(`grep "% of reads unmapped: other" "!{mappedLog}" | sed 's/.*|//'`)
+    echo "${statsAggr[@]}"
+    '''
+}
+
+mappingStatsAggr
+    .collectFile(name: mapStatsTab, newLine: false)
+
+/* ----------------------------------------------------------------------------
 * Count reads in demultiplexed trimmed bams
 *----------------------------------------------------------------------------*/
 process countReads {
@@ -164,7 +210,7 @@ process countReads {
 
     input:
     tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, trimmedR2,
-          demultiplexfq, mappedBam, mappedLog from mappedBundle
+          demultiplexfq, mappedBam, mappedLog from mappedForCounts
 
     output:
     tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, trimmedR2,
@@ -186,4 +232,3 @@ process countReads {
     '''
 }
 
-countedBundle.println()
