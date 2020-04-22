@@ -56,8 +56,13 @@ process trimReads {
     R2path=$(find "!{userDir}""!{RunID}" -type f | grep "!{LibraryID}" | \
              grep "!{SampleID}" | grep "!{R2code}" | grep "!{fastqExtens}")
     # perform trimming with trim galore
-    trim_galore -q 20 --length 20 --paired $R1path $R2path --fastqc \
-                --basename "!{SampleID}"
+    trim_galore --paired $R1path $R2path --basename "!{SampleID}" \
+                -q "!{params.trimGalore_quality}" \
+                --length "!{params.trimGalore_length}" \
+                --adapter "!{params.trimGalore_adapter}" \
+                --adapter2 "!{params.trimGalore_adapter}" \
+                "!{params.trimGalore_fastqc}" "!{params.trimGalore_gzip}" \
+                "!{params.trimGalore_polyA}"
     '''
 }
 
