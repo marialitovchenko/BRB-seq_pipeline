@@ -143,10 +143,15 @@ process mapWithStar {
     '''
     mapPrefName=`basename "!{demultiplexfq}" | sed 's/[.].*//g'`
     mapPrefName=$mapPrefName"_"
-    STAR --runMode alignReads --runThreadN 1 --genomeDir "!{genomePath}" \
-         --outFilterMultimapNmax 1 --readFilesCommand zcat \
-         --outSAMtype BAM SortedByCoordinate --outFileNamePrefix $mapPrefName \
-         --readFilesIn "!{demultiplexfq}"
+    STAR --runMode alignReads --readFilesIn "!{demultiplexfq}" \
+         --genomeDir "!{genomePath}" \
+         --outFileNamePrefix $mapPrefName \
+         --runThreadN "!{params.star_runThreadN}" \
+         --outFilterMultimapNmax "!{params.star_outFilterMultimapNmax}" \
+         --readFilesCommand "!{params.star_readFilesCommand}" \
+         --outSAMtype "!{params.star_outSAMtype}" \
+         --outFilterScoreMinOverLread "!{params.star_outFilterScoreMinOverLread}" \
+         --outFilterMatchNminOverLread "!{params.star_outFilterMatchNminOverLread}"
     '''
 }
 
@@ -220,7 +225,8 @@ process countReads {
     '''
     gtfPath=`find "!{genomePath}" | grep .gtf$`
     java -jar -Xmx2g "!{brbseqTools}" CreateDGEMatrix -f "!{trimmedR1}" \
-         -b "!{mappedBam}" -c "!{params.barcodefile}" -o "." -gtf $gtfPath -p "!{params.buPattern}"  \
+         -b "!{mappedBam}" -c "!{params.barcodefile}" -o "." \
+         -gtf $gtfPath -p "!{params.buPattern}"  \
          -UMI "!{params.umiLen}"
    
     samplName=`basename "!{mappedBam}" | sed 's/_Aligned.sortedByCoord.out.bam/.count/g'`
