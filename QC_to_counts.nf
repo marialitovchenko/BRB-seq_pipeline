@@ -2,9 +2,6 @@
 
 //user directory
 userDir="/home/litovche/Desktop/BRB-seq_pipeline/BRB_seq_PipelineDevelopment/"
-// technical directory, contains all support files, like genomes, etc
-techDir="/home/litovche/Desktop/BRB-seq_pipeline/test_input/"
-barcodefile=techDir + "barcodes_v3.txt"
 // also should be in tech dir
 brbseqTools="/home/litovche/bin/BRBseqTools.1.5.jar"
 genomePath="/home/litovche/Documents/RefGen/chr21human/"
@@ -12,13 +9,6 @@ genomePath="/home/litovche/Documents/RefGen/chr21human/"
 // path to the input table with samples
 sampleTabPath = 'test_input/sampleTable.csv'
 numbOfProc = 4
-
-fastqExtens=".fastq\$\\|.fq\$\\|.fq.gz\$\\|.fastq.gz\$"
-
-R1code = "_R1_"
-R2code = "_R2_"
-
-umiLen=10
 
 rInputTab="/home/litovche/Desktop/BRB-seq_pipeline/rInputTab.csv"
 mapStatsTab="/home/litovche/Desktop/BRB-seq_pipeline/mapStatsTab.csv"
@@ -52,9 +42,11 @@ process trimReads {
     '''
     # full paths for R1 and R2
     R1path=$(find "!{userDir}""!{RunID}" -type f | grep "!{LibraryID}" | \
-             grep "!{SampleID}" | grep "!{R1code}" | grep "!{fastqExtens}")
+             grep "!{SampleID}" | grep "!{params.R1code}" | \
+             grep "!{params.fastqExtens}")
     R2path=$(find "!{userDir}""!{RunID}" -type f | grep "!{LibraryID}" | \
-             grep "!{SampleID}" | grep "!{R2code}" | grep "!{fastqExtens}")
+             grep "!{SampleID}" | grep "!{params.R2code}" | \
+             grep "!{params.fastqExtens}")
     # perform trimming with trim galore
     trim_galore --paired $R1path $R2path --basename "!{SampleID}" \
                 -q "!{params.trimGalore_quality}" \
@@ -100,7 +92,9 @@ process demultiplex {
     '''
     java -jar "!{brbseqTools}" Demultiplex \
                                -r1 "!{trimmedR1}" -r2 "!{trimmedR2}" \
-                               -c "!{barcodefile}" -p BU -UMI "!{umiLen}" \
+                               -c "!{params.barcodefile}" \
+                               -p "!{params.buPattern}" 
+                               -UMI "!{params.umiLen}" \
                                -o "."
     '''
 }
@@ -226,8 +220,8 @@ process countReads {
     '''
     gtfPath=`find "!{genomePath}" | grep .gtf$`
     java -jar -Xmx2g "!{brbseqTools}" CreateDGEMatrix -f "!{trimmedR1}" \
-         -b "!{mappedBam}" -c "!{barcodefile}" -o "." -gtf $gtfPath -p BU \
-         -UMI "!{umiLen}"
+         -b "!{mappedBam}" -c "!{params.barcodefile}" -o "." -gtf $gtfPath -p "!{params.buPattern}"  \
+         -UMI "!{params.umiLen}"
    
     samplName=`basename "!{mappedBam}" | sed 's/_Aligned.sortedByCoord.out.bam/.count/g'`
     mv output.dge.reads.detailed.txt $samplName".dge.reads.detailed.txt"
