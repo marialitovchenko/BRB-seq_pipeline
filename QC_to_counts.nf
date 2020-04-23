@@ -48,11 +48,9 @@ process trimReads {
              grep !{SampleID} | grep !{params.R2code} | \
              grep !{params.fastqExtens})
     # perform trimming with trim galore
-    echo $R1path
-    echo $R2path
     echo !{params.trimGalore_allParms}
     trim_galore --paired $R1path $R2path --basename !{SampleID} \
-                !{params.trimGalore_allParms}
+                !{params.trimGalore_allParams}
     '''
 }
 
@@ -88,12 +86,9 @@ process demultiplex {
 
     shell:
     '''
-    java -jar "!{brbseqTools}" Demultiplex \
-                               -r1 "!{trimmedR1}" -r2 "!{trimmedR2}" \
-                               -c "!{params.barcodefile}" \
-                               -p "!{params.buPattern}" \
-                               -UMI "!{params.umiLen}" \
-                               -o "."
+    java -jar !{brbseqTools} Demultiplex -r1 !{trimmedR1} -r2 !{trimmedR2} \
+                               -c !{params.barcodefile} -o "." \
+                               !{params.brbseqTools_commonParams}
     '''
 }
 
@@ -139,17 +134,10 @@ process mapWithStar {
 
     shell:
     '''
-    mapPrefName=`basename "!{demultiplexfq}" | sed 's/[.].*//g'`
+    mapPrefName=`basename !{demultiplexfq} | sed 's/[.].*//g'`
     mapPrefName=$mapPrefName"_"
-    STAR --runMode alignReads --readFilesIn "!{demultiplexfq}" \
-         --genomeDir "!{genomePath}" \
-         --outFileNamePrefix $mapPrefName \
-         --runThreadN "!{params.star_runThreadN}" \
-         --outFilterMultimapNmax "!{params.star_outFilterMultimapNmax}" \
-         --readFilesCommand "!{params.star_readFilesCommand}" \
-         --outSAMtype "!{params.star_outSAMtype}" "!{params.star_sortBy}" \
-         --outFilterScoreMinOverLread "!{params.star_outFilterScoreMinOverLread}" \
-         --outFilterMatchNminOverLread "!{params.star_outFilterMatchNminOverLread}"
+    STAR --runMode alignReads --readFilesIn !{demultiplexfq} \
+         --genomeDir !{genomePath} !{params.star_allParams}
     '''
 }
 
@@ -175,22 +163,22 @@ process aggregateMapStats {
     shell:
     '''
     # initial sample info
-    statsAggr=("!{RunID}")
-    statsAggr+=("!{LibraryID}")
-    statsAggr+=("!{SampleID}")
-    statsAggr+=("!{Specie}")
-    statsAggr+=("!{Genome}")
-    statsAggr+=("!{demultiplexfq}")
+    statsAggr=(!{RunID})
+    statsAggr+=(!{LibraryID})
+    statsAggr+=(!{SampleID})
+    statsAggr+=(!{Specie})
+    statsAggr+=(!{Genome})
+    statsAggr+=(!{demultiplexfq})
 
     # append mapping stats info
-    statsAggr+=(`grep "Number of input reads" "!{mappedLog}" | sed 's/.*|//'`)
-    statsAggr+=(`grep "mapped (" "!{mappedLog}" | sed 's/ .*//'`)
-    statsAggr+=(`grep "Uniquely mapped reads number" "!{mappedLog}" | sed 's/.*|//'`)
-    statsAggr+=(`grep "Number of reads mapped to multiple loci" "!{mappedLog}" | sed 's/.*|//'`)
-    statsAggr+=(`grep "Number of reads mapped to too many loci" "!{mappedLog}" | sed 's/.*|//'`)
-    statsAggr+=(`grep "Number of reads unmapped: too many mismatches" "!{mappedLog}" | sed 's/.*|//'`)
-    statsAggr+=(`grep "Number of reads unmapped: too short" "!{mappedLog}" | sed 's/.*|//'`)
-    statsAggr+=(`grep "Nummber of reads unmapped: other" "!{mappedLog}" | sed 's/.*|//'`)
+    statsAggr+=(`grep "Number of input reads" !{mappedLog} | sed 's/.*|//'`)
+    statsAggr+=(`grep "mapped (" !{mappedLog} | sed 's/ .*//'`)
+    statsAggr+=(`grep "Uniquely mapped reads number" !{mappedLog} | sed 's/.*|//'`)
+    statsAggr+=(`grep "Number of reads mapped to multiple loci" !{mappedLog} | sed 's/.*|//'`)
+    statsAggr+=(`grep "Number of reads mapped to too many loci" !{mappedLog} | sed 's/.*|//'`)
+    statsAggr+=(`grep "Number of reads unmapped: too many mismatches" !{mappedLog} | sed 's/.*|//'`)
+    statsAggr+=(`grep "Number of reads unmapped: too short" !{mappedLog} | sed 's/.*|//'`)
+    statsAggr+=(`grep "Nummber of reads unmapped: other" !{mappedLog} | sed 's/.*|//'`)
     echo "${statsAggr[@]}"
     '''
 }
@@ -221,13 +209,12 @@ process countReads {
 
     shell:
     '''
-    gtfPath=`find "!{genomePath}" | grep .gtf$`
-    java -jar -Xmx2g "!{brbseqTools}" CreateDGEMatrix -f "!{trimmedR1}" \
-         -b "!{mappedBam}" -c "!{params.barcodefile}" -o "." \
-         -gtf $gtfPath -p "!{params.buPattern}"  \
-         -UMI "!{params.umiLen}"
+    gtfPath=`find !{genomePath} | grep .gtf$`
+    java -jar -Xmx2g !{brbseqTools} CreateDGEMatrix -f !{trimmedR1} \
+         -b !{mappedBam} -c !{params.barcodefile} -o "." \
+         -gtf $gtfPath !{params.brbseqTools_commonParams}
    
-    samplName=`basename "!{mappedBam}" | sed 's/_Aligned.sortedByCoord.out.bam/.count/g'`
+    samplName=`basename !{mappedBam} | sed 's/_Aligned.sortedByCoord.out.bam/.count/g'`
     mv output.dge.reads.detailed.txt $samplName".dge.reads.detailed.txt"
     mv output.dge.reads.txt $samplName".dge.reads.txt"
     mv output.dge.umis.detailed.txt $samplName".dge.umis.detailed.txt"
