@@ -41,23 +41,18 @@ process trimReads {
     shell:
     '''
     # full paths for R1 and R2
-    R1path=$(find "!{userDir}""!{RunID}" -type f | grep "!{LibraryID}" | \
-             grep "!{SampleID}" | grep "!{params.R1code}" | \
-             grep "!{params.fastqExtens}")
-    R2path=$(find "!{userDir}""!{RunID}" -type f | grep "!{LibraryID}" | \
-             grep "!{SampleID}" | grep "!{params.R2code}" | \
-             grep "!{params.fastqExtens}")
+    R1path=$(find !{userDir}!{RunID} -type f | grep !{LibraryID} | \
+             grep !{SampleID} | grep !{params.R1code} | \
+             grep !{params.fastqExtens})
+    R2path=$(find !{userDir}!{RunID} -type f | grep !{LibraryID} | \
+             grep !{SampleID} | grep !{params.R2code} | \
+             grep !{params.fastqExtens})
     # perform trimming with trim galore
     echo $R1path
     echo $R2path
-    echo "!{params.trimGalore_combParams}"
-    trim_galore --paired $R1path $R2path --basename "!{SampleID}" \
-                -q !{params.trimGalore_quality} \
-                --length !{params.trimGalore_length} \
-                !{params.trimGalore_adapter} \
-                !{params.trimGalore_adapter2} \
-                !{params.trimGalore_fastqc} !{params.trimGalore_gzip} \
-                !{params.trimGalore_polyA}
+    echo !{params.trimGalore_allParms}
+    trim_galore --paired $R1path $R2path --basename !{SampleID} \
+                !{params.trimGalore_allParms}
     '''
 }
 
