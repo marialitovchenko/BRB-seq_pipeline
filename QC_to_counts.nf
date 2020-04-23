@@ -43,12 +43,12 @@ process trimReads {
     # full paths for R1 and R2
     R1path=$(find !{userDir}!{RunID} -type f | grep !{LibraryID} | \
              grep !{SampleID} | grep !{params.R1code} | \
-             grep !{params.fastqExtens})
+             grep "!{params.fastqExtens}")
     R2path=$(find !{userDir}!{RunID} -type f | grep !{LibraryID} | \
              grep !{SampleID} | grep !{params.R2code} | \
-             grep !{params.fastqExtens})
+             grep "!{params.fastqExtens}")
     # perform trimming with trim galore
-    echo !{params.trimGalore_allParms}
+    echo !{params.trimGalore_allParams}
     trim_galore --paired $R1path $R2path --basename !{SampleID} \
                 !{params.trimGalore_allParams}
     '''
@@ -137,7 +137,8 @@ process mapWithStar {
     mapPrefName=`basename !{demultiplexfq} | sed 's/[.].*//g'`
     mapPrefName=$mapPrefName"_"
     STAR --runMode alignReads --readFilesIn !{demultiplexfq} \
-         --genomeDir !{genomePath} !{params.star_allParams}
+         --genomeDir !{genomePath} --outFileNamePrefix $mapPrefName \
+         !{params.star_allParams}
     '''
 }
 
