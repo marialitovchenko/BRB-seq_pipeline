@@ -173,13 +173,12 @@ process aggregateMapStats {
 
     # append mapping stats info
     statsAggr+=(`grep "Number of input reads" !{mappedLog} | sed 's/.*|//'`)
-    statsAggr+=(`grep "mapped (" !{mappedLog} | sed 's/ .*//'`)
     statsAggr+=(`grep "Uniquely mapped reads number" !{mappedLog} | sed 's/.*|//'`)
     statsAggr+=(`grep "Number of reads mapped to multiple loci" !{mappedLog} | sed 's/.*|//'`)
     statsAggr+=(`grep "Number of reads mapped to too many loci" !{mappedLog} | sed 's/.*|//'`)
     statsAggr+=(`grep "Number of reads unmapped: too many mismatches" !{mappedLog} | sed 's/.*|//'`)
     statsAggr+=(`grep "Number of reads unmapped: too short" !{mappedLog} | sed 's/.*|//'`)
-    statsAggr+=(`grep "Nummber of reads unmapped: other" !{mappedLog} | sed 's/.*|//'`)
+    statsAggr+=(`grep "Number of reads unmapped: other" !{mappedLog} | sed 's/.*|//'`)
     echo "${statsAggr[@]}"
     '''
 }
