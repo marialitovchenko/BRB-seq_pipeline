@@ -48,13 +48,16 @@ process trimReads {
              grep "!{SampleID}" | grep "!{params.R2code}" | \
              grep "!{params.fastqExtens}")
     # perform trimming with trim galore
+    echo $R1path
+    echo $R2path
+    echo "!{params.trimGalore_combParams}"
     trim_galore --paired $R1path $R2path --basename "!{SampleID}" \
-                -q "!{params.trimGalore_quality}" \
-                --length "!{params.trimGalore_length}" \
-                --adapter "!{params.trimGalore_adapter}" \
-                --adapter2 "!{params.trimGalore_adapter}" \
-                "!{params.trimGalore_fastqc}" "!{params.trimGalore_gzip}" \
-                "!{params.trimGalore_polyA}"
+                -q !{params.trimGalore_quality} \
+                --length !{params.trimGalore_length} \
+                !{params.trimGalore_adapter} \
+                !{params.trimGalore_adapter2} \
+                !{params.trimGalore_fastqc} !{params.trimGalore_gzip} \
+                !{params.trimGalore_polyA}
     '''
 }
 
@@ -93,7 +96,7 @@ process demultiplex {
     java -jar "!{brbseqTools}" Demultiplex \
                                -r1 "!{trimmedR1}" -r2 "!{trimmedR2}" \
                                -c "!{params.barcodefile}" \
-                               -p "!{params.buPattern}" 
+                               -p "!{params.buPattern}" \
                                -UMI "!{params.umiLen}" \
                                -o "."
     '''
@@ -149,7 +152,7 @@ process mapWithStar {
          --runThreadN "!{params.star_runThreadN}" \
          --outFilterMultimapNmax "!{params.star_outFilterMultimapNmax}" \
          --readFilesCommand "!{params.star_readFilesCommand}" \
-         --outSAMtype "!{params.star_outSAMtype}" \
+         --outSAMtype "!{params.star_outSAMtype}" "!{params.star_sortBy}" \
          --outFilterScoreMinOverLread "!{params.star_outFilterScoreMinOverLread}" \
          --outFilterMatchNminOverLread "!{params.star_outFilterMatchNminOverLread}"
     '''
@@ -190,9 +193,9 @@ process aggregateMapStats {
     statsAggr+=(`grep "Uniquely mapped reads number" "!{mappedLog}" | sed 's/.*|//'`)
     statsAggr+=(`grep "Number of reads mapped to multiple loci" "!{mappedLog}" | sed 's/.*|//'`)
     statsAggr+=(`grep "Number of reads mapped to too many loci" "!{mappedLog}" | sed 's/.*|//'`)
-    statsAggr+=(`grep "% of reads unmapped: too many mismatches" "!{mappedLog}" | sed 's/.*|//'`)
-    statsAggr+=(`grep "% of reads unmapped: too short" "!{mappedLog}" | sed 's/.*|//'`)
-    statsAggr+=(`grep "% of reads unmapped: other" "!{mappedLog}" | sed 's/.*|//'`)
+    statsAggr+=(`grep "Number of reads unmapped: too many mismatches" "!{mappedLog}" | sed 's/.*|//'`)
+    statsAggr+=(`grep "Number of reads unmapped: too short" "!{mappedLog}" | sed 's/.*|//'`)
+    statsAggr+=(`grep "Nummber of reads unmapped: other" "!{mappedLog}" | sed 's/.*|//'`)
     echo "${statsAggr[@]}"
     '''
 }
