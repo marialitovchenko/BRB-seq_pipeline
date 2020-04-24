@@ -31,6 +31,9 @@ library(data.table)
 library(ggplot2)
 library(shiny)
 
+idColNames <- c('RunID', 'LibraryID', 'SampleID', 'Specie', 'Genome', 
+                'SubSample')
+
 # colors
 colorCode <- c("NOT mapped" = "#FFD9D9", "mapped to mult. loci" = '#FFBABA',
                "NOT mapped - mismatches" = '#C48484', 
@@ -181,13 +184,6 @@ readMapStatTab <- function(mappingStatsPath) {
 }
 
 # Define UI for app that draws a histogram ----
-# list all accessible runs
-#uniqRuns <- unique(stats$RunID)
-#if (length(uniqRuns) > 2) {
-#  uniqRuns <- c(uniqRuns[1:2], 'etc')
-#}
-#uniqRuns <- paste(uniqRuns, collapse = ', ')
-
 # page title
 pageTitle <- paste("Mapping statistics of your runs:", 'A')
 # input of file(s) containing mapping stats
@@ -197,9 +193,12 @@ fileSelect <- fileInput("fileIn", "Choose file containing mapping statistics",
                                     "text/comma-separated-values,text/plain",
                                     ".csv"))
 # drop-down menu to select runs' ID which are displayed
-#runIDselect <- selectInput("runsToDisplay", "Runs:", unique(stats$RunID),
-#                           selected = unique(stats$RunID)[1],
-#                           multiple = T)
+runIDselect <- selectInput('runsToDisplay', 'Runs to display', "", 
+                           multiple = T)
+libsIDselect <- selectInput('libsToDisplay', 'Libraries to display', "", 
+                           multiple = T)
+samplesIDselect <- selectInput('samplesToDisplay', 'Samples to display', "",
+                               multiple = T)
 # Numeric input to select height and width of the plot
 plotHpx <- numericInput("plotH", label = "Plot heigth, px", value = 1400,
                         min = 1400, max = 10000)
@@ -211,7 +210,9 @@ ui <- fluidPage(titlePanel(pageTitle),
     sidebarPanel(
       fileSelect, # selection of input files
       br(), # break
-      #runIDselect, # select Run IDs
+      runIDselect, # select Run IDs
+      libsIDselect, # select Library IDs
+      samplesIDselect, # select Samples IDs
       plotHpx, # plot heigth
       plotWpx # plot width
     ),
@@ -219,34 +220,46 @@ ui <- fluidPage(titlePanel(pageTitle),
     mainPanel( # Main panel for displaying plots
       tabsetPanel(type = "tabs",
                   tabPanel("Table", tableOutput("table")),
-                  tabPanel("Raw values", plotOutput("plot")),
-                  tabPanel("Percentage", verbatimTextOutput("summary"))
+                  tabPanel("Raw values", plotOutput("rawPlot")),
+                  tabPanel("Percentage", plotOutput("percPlot"))
       )
     )
   )
 )
 
-server <- function(input, output) {
-  inFile <- reactive({
-    infile <- input$fileIn
-    if (is.null(infile)) { # User has not uploaded a file yet
-      return(NULL)
-    }
-    df <- readMapStatTab(infile)
+server <- function(input, output, session) {
+  mapData <- reactive({ 
+    req(input$fileIn) # require that the input is available
+    inFile <- input$fileIn
+    df <- readMapStatTab(inFile$datapath)
+    
+    # Update inputs
+    # list all accessible runs
+    uniqRuns <- unique(df$RunID)
+    uniqLibs <- unique(df$LibraryID)
+    uniqSamples <- unique(df$SampleID)
+    updateSelectInput(session, inputId = 'runsToDisplay',
+                      label = 'Runs to display',
+                      choices = uniqRuns, selected = uniqRuns[1])
+    updateSelectInput(session, inputId = 'libsToDisplay',
+                      label = 'Libraries to display',
+                      choices = uniqLibs)
     return(df)
   })
   
-  dataForVisual <- reactive({
-    df <- inFile()
-    if (is.null(df)) {
-      return(NULL)
-    }
-    return(df)
-  })
+  plotWidth <- reactive({input$plotW})
+  plotHeight <- reactive({input$plotH})
   
-  print(dataForVisual)
-  
-  output$table <- renderTable({dataForVisual})
-  
+  output$table <- renderTable({mapData()[RunID %in% input$runsToDisplay]})
+  output$rawPlot <- renderPlot({plotMapStats(mapData(), idColNames,
+                                             input$runsToDisplay,
+                                             'Raw values', colorCode)},
+                             width = plotWidth,
+                             height = plotHeight)
+  output$percPlot <- renderPlot({plotMapStats(mapData(), idColNames,
+                                             input$runsToDisplay,
+                                             'Percentage', colorCode)},
+                               width = plotWidth,
+                               height = plotHeight)
 }
 shinyApp(ui, server)
