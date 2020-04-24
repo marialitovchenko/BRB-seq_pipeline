@@ -19,8 +19,6 @@
 
 # Why not all files have mapping stats???
 
-# Add plot run by run
-# Add drop selection: percentage or actual value
 # Add sort by
 
 # Add buttom to output raw mapping stats table
@@ -56,22 +54,30 @@ mashaGgplot2Theme <- list(
 )
 
 # Functions -------------------------------------------------------------------
+#' createBasePlot
+#' Function to create a base plot for the mapping stats
+#' @param dtToPlot data table to plot
+#' @param plotType string, plot type: "Percentage" or "Raw value"
+#' @param plotColors vector color pallet for plot
 createBasePlot <- function(dtToPlot, plotType, plotColors) {
   if (plotType == 'Raw values') {
-    dtToPlot[, value := value / 10^6]
     dtToPlot <- dtToPlot[!grepl('%|total reads', variable)]
+    dtToPlot[, value := value / 10^6]
     yAxisName <- "Number of reads, mlns"
     plotTitle <- "Number of uniquely mapped/unmapped reads"
-  } else {
-    dtToPlot <- dtToPlot[grepl('%', variable)]
-    yAxisName <- "Percentage of total reads"
-    plotTitle <- "Percentage of uniquely mapped/unmapped reads"
-    names(plotColors) <- paste('%', names(plotColors))
   }
+  if (plotType == 'Percentage') {
+      dtToPlot <- dtToPlot[grepl('%', variable)]
+      yAxisName <- "Percentage of total reads"
+      plotTitle <- "Percentage of uniquely mapped/unmapped reads"
+      names(plotColors) <- paste('%', names(plotColors))
+  } 
+
   result <- ggplot(dtToPlot, 
                    aes(x = SubSample, y = value, fill = variable)) +
                    geom_bar(stat = "identity") + xlab("Sample") + 
-                   facet_grid(. ~ paste(RunID, LibraryID, sep = ': ')) +
+                   facet_grid(. ~ paste(RunID, LibraryID, sep = ': '), 
+                              scales = 'free_y') +
                    ylab(yAxisName) + ggtitle(plotTitle) +
                    scale_fill_manual("Legend", values = plotColors) + 
                    mashaGgplot2Theme + 
@@ -79,6 +85,8 @@ createBasePlot <- function(dtToPlot, plotType, plotColors) {
   result
 }
 
+#' multiplot
+#' @param list of ggplot2 object
 multiplot <- function(..., plotlist = NULL, file, cols=1, layout = NULL) {
   library(grid)
   
@@ -115,12 +123,20 @@ multiplot <- function(..., plotlist = NULL, file, cols=1, layout = NULL) {
   }
 }
 
+#' plotMapStats
+#' Plots mapping stats for shiny
+#' @param dataTabWide data table to plot, wide format
+#' @param idCols column names which contain IDs
+#' @param runIDsToPlot vector of strings, IDs of runs to plot
+#' @param displayModeToPlot string, "Percentage" or "Raw values"
+#' @param colorPallete vector color pallet for plot
+#' @return ggplot
 plotMapStats <- function(dataTabWide, idCols, runIDsToPlot, displayModeToPlot,
                          colorPallete) {
   # select run ids to plot
   dataToPlot <- dataTabWide[RunID %in% runIDsToPlot]
   # add percetages, if required
-  if (displayModeToPlot %in% c('Percentage', 'Both')) {
+  if (displayModeToPlot == 'Percentage') {
     # select ID columns
     dataToPlotPerc <- dataToPlot[, idCols, with = F]
     # select columns with raw statistics values (integer)
@@ -137,49 +153,100 @@ plotMapStats <- function(dataTabWide, idCols, runIDsToPlot, displayModeToPlot,
   dataToPlot <- melt(dataToPlot, id.vars = idCols, verbose = F)
   
   # build the plot(s)
-  if (displayModeToPlot != 'Both') {
-    result <- createBasePlot(dataToPlot, displayModeToPlot, colorPallete)
-  } else {
-    resultRaw <- createBasePlot(dataToPlot, 'Raw values', colorPallete)
-    resultPerc <- createBasePlot(dataToPlot, 'Percentage', colorPallete)
-    result <- multiplot(resultRaw, resultPerc)
-  }
+  result <- createBasePlot(dataToPlot, displayModeToPlot, colorPallete)
+  
   result
 }
 
-# Inputs ----------------------------------------------------------------------
-mappingStatsPath <- 'mapStatsTab.csv'
-
-# Re-format input table -------------------------------------------------------
-# Names of the columns
-idColNames <- c('RunID', 'LibraryID', 'SampleID', 'Specie', 'Genome', 
-                'SubSample')
-statNames <- c(idColNames, 'total reads', 'uniquely mapped', 
-               'mapped to mult. loci', 'mapped to too many loci',
-               'NOT mapped - mismatches', 'NOT mapped - too short',
-               'NOT mapped - other')
-# read-in and assign column names
-stats <- fread(mappingStatsPath, header = F, stringsAsFactors = F, fill = T)
-setnames(stats, colnames(stats), statNames)
-# for the subsample names, remove elements of the path from it, leaving just
-# samples
-stats[, SubSample := gsub('.*/', '', SubSample)]
-stats[, SubSample := gsub('[.].*', '', SubSample)]
-
-# convert to long format for plotting
-statsLong <- melt(stats[, -7], 
-                  id.vars = c('RunID', 'LibraryID', 'SampleID', 'Specie',
-                                     'Genome',  'SubSample'))
-
-# 
-p <- ggplot(statsLong, aes(x = SubSample, y = value/1000000, 
-                        fill = variable)) + 
-  geom_bar(stat = "identity") + 
-  ggtitle('Number of uniquely mapped/unmapped reads') +
-  xlab("Sample") + ylab("Number of reads, mlns") + 
-  scale_fill_manual("Legend", values = colorCode) + 
-  mashaGgplot2Theme +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
+#' readMapStatTab
+#' Reads and formats one mapping stats table
+#' @param mappingStatsPath path to the file with mapping stats
+#' @return data table
+readMapStatTab <- function(mappingStatsPath) {
+  # Names of the columns
+  idColNames <- c('RunID', 'LibraryID', 'SampleID', 'Specie', 'Genome', 
+                  'SubSample')
+  statNames <- c(idColNames, 'total reads', 'uniquely mapped', 
+                 'mapped to mult. loci', 'mapped to too many loci',
+                 'NOT mapped - mismatches', 'NOT mapped - too short',
+                 'NOT mapped - other')
+  # read-in and assign column names
+  stats <- fread(mappingStatsPath, header = F, stringsAsFactors = F, fill = T)
+  setnames(stats, colnames(stats), statNames)
+  # for the subsample names, remove elements of the path from it, leaving just
+  # samples
+  stats[, SubSample := gsub('.*/', '', SubSample)]
+  stats[, SubSample := gsub('[.].*', '', SubSample)]
+  stats
+}
 
 # Define UI for app that draws a histogram ----
+# list all accessible runs
+#uniqRuns <- unique(stats$RunID)
+#if (length(uniqRuns) > 2) {
+#  uniqRuns <- c(uniqRuns[1:2], 'etc')
+#}
+#uniqRuns <- paste(uniqRuns, collapse = ', ')
+
+# page title
+pageTitle <- paste("Mapping statistics of your runs:", 'A')
+# input of file(s) containing mapping stats
+fileSelect <- fileInput("fileIn", "Choose file containing mapping statistics",
+                        multiple = T,
+                        accept = c( "text/csv",
+                                    "text/comma-separated-values,text/plain",
+                                    ".csv"))
+# drop-down menu to select runs' ID which are displayed
+#runIDselect <- selectInput("runsToDisplay", "Runs:", unique(stats$RunID),
+#                           selected = unique(stats$RunID)[1],
+#                           multiple = T)
+# Numeric input to select height and width of the plot
+plotHpx <- numericInput("plotH", label = "Plot heigth, px", value = 1400,
+                        min = 1400, max = 10000)
+plotWpx <- numericInput("plotW", label = "Plot width, px", value = 500,
+                        min = 500, max = 10000)
+
+ui <- fluidPage(titlePanel(pageTitle),
+  sidebarLayout(
+    sidebarPanel(
+      fileSelect, # selection of input files
+      br(), # break
+      #runIDselect, # select Run IDs
+      plotHpx, # plot heigth
+      plotWpx # plot width
+    ),
+  
+    mainPanel( # Main panel for displaying plots
+      tabsetPanel(type = "tabs",
+                  tabPanel("Table", tableOutput("table")),
+                  tabPanel("Raw values", plotOutput("plot")),
+                  tabPanel("Percentage", verbatimTextOutput("summary"))
+      )
+    )
+  )
+)
+
+server <- function(input, output) {
+  inFile <- reactive({
+    infile <- input$fileIn
+    if (is.null(infile)) { # User has not uploaded a file yet
+      return(NULL)
+    }
+    df <- readMapStatTab(infile)
+    return(df)
+  })
+  
+  dataForVisual <- reactive({
+    df <- inFile()
+    if (is.null(df)) {
+      return(NULL)
+    }
+    return(df)
+  })
+  
+  print(dataForVisual)
+  
+  output$table <- renderTable({dataForVisual})
+  
+}
+shinyApp(ui, server)
