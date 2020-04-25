@@ -22,7 +22,6 @@
 # Add sort by
 
 # Add buttom to output raw mapping stats table
-# Add table dysplay
 # Add save plot
 # Add counts columns to table from R into nextflow
 
@@ -31,6 +30,7 @@ library(data.table)
 library(ggplot2)
 library(shiny)
 
+# column names used as IDs
 idColNames <- c('RunID', 'LibraryID', 'SampleID', 'Specie', 'Genome', 
                 'SubSample')
 
@@ -89,6 +89,7 @@ createBasePlot <- function(dtToPlot, plotType, plotColors) {
 }
 
 #' multiplot
+#' Returns multiplot of several ggplot2 plots
 #' @param list of ggplot2 object
 multiplot <- function(..., plotlist = NULL, file, cols=1, layout = NULL) {
   library(grid)
@@ -183,9 +184,8 @@ readMapStatTab <- function(mappingStatsPath) {
   stats
 }
 
-# Define UI for app that draws a histogram ----
-# page title
-pageTitle <- paste("Mapping statistics of your runs:", 'A')
+# Assemble major control panel ------------------------------------------------
+# It contains input of file(s), selection of RunID, Library ID
 # input of file(s) containing mapping stats
 fileSelect <- fileInput("fileIn", "Choose file containing mapping statistics",
                         multiple = T,
@@ -199,32 +199,45 @@ libsIDselect <- selectInput('libsToDisplay', 'Libraries to display', "",
                            multiple = T)
 samplesIDselect <- selectInput('samplesToDisplay', 'Samples to display', "",
                                multiple = T)
+sideBarCtrl <- sidebarPanel(fileSelect, br(), runIDselect,
+                            libsIDselect, samplesIDselect)
+
+# Assemble control panel for the plot display and output ----------------------
 # Numeric input to select height and width of the plot
 plotHpx <- numericInput("plotH", label = "Plot heigth, px", value = 1400,
                         min = 1400, max = 10000)
 plotWpx <- numericInput("plotW", label = "Plot width, px", value = 500,
                         min = 500, max = 10000)
+# Selection of by which parameter to sort
+rawSortByBox <- selectInput("rawSortBy", label = "Sort values by ...", 
+                            choices = c('Sample name', "Total number of reads",
+                                        'Number of uniquely mapped reads'), 
+                            selected = 1, multiple = F)
+percSortByBox <- selectInput("rawSortBy", label = "Sort values by ...", 
+                             choices = c('Sample name', 
+                                         'Percentage of uniquely mapped reads'), 
+                             selected = 1, multiple = F)
+
+# control for the raw values plot table
+rawPlotDisplayCtrl <- fluidRow(column(3, plotWpx), column(3, plotHpx),
+                               column(3, rawSortByBox))
+# control for the percentage plot table
+percPlotDisplayCtrl <- fluidRow(column(3, plotWpx), column(3, plotHpx),
+                                column(3, percSortByBox))
+
+# Assemble tab display of table and plots -------------------------------------
+tableViewTab <- tabPanel("Table", tableOutput("table"))
+rawValuesTab <- tabPanel("Raw values", rawPlotDisplayCtrl, hr(), 
+                         plotOutput("rawPlot"))
+percViewTab <- tabPanel("Percentage", percPlotDisplayCtrl, hr(),
+                        plotOutput("percPlot"))
+tabView <- tabsetPanel(type = "tabs", tableViewTab, rawValuesTab, percViewTab)
+
+# page title
+pageTitle <- paste("Mapping statistics of your runs:", 'A')
 
 ui <- fluidPage(titlePanel(pageTitle),
-  sidebarLayout(
-    sidebarPanel(
-      fileSelect, # selection of input files
-      br(), # break
-      runIDselect, # select Run IDs
-      libsIDselect, # select Library IDs
-      samplesIDselect, # select Samples IDs
-      plotHpx, # plot heigth
-      plotWpx # plot width
-    ),
-  
-    mainPanel( # Main panel for displaying plots
-      tabsetPanel(type = "tabs",
-                  tabPanel("Table", tableOutput("table")),
-                  tabPanel("Raw values", plotOutput("rawPlot")),
-                  tabPanel("Percentage", plotOutput("percPlot"))
-      )
-    )
-  )
+  sidebarLayout(sideBarCtrl, mainPanel(tabView))
 )
 
 server <- function(input, output, session) {
@@ -239,10 +252,8 @@ server <- function(input, output, session) {
     uniqLibs <- unique(df$LibraryID)
     uniqSamples <- unique(df$SampleID)
     updateSelectInput(session, inputId = 'runsToDisplay',
-                      label = 'Runs to display',
                       choices = uniqRuns, selected = uniqRuns[1])
     updateSelectInput(session, inputId = 'libsToDisplay',
-                      label = 'Libraries to display',
                       choices = uniqLibs)
     return(df)
   })
