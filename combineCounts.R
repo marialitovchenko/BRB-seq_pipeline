@@ -99,7 +99,6 @@ mergeCountsInto1Tab <- function(countsPaths) {
   countTab <- countCols[[1]]
   setkey(countTab, Gene_id, Gene_name)
   for (i in 2:length(countCols)) {
-    print(i)
     countTab <- merge(countTab, countCols[[i]], all = T)
     setkey(countTab, Gene_id, Gene_name)
   }

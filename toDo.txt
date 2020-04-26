@@ -12,3 +12,5 @@ put proper adapter sequences to cut adapt, they are only in R2
 
 do a separate file with all parameters of all methods
 in the R script, give all parameters for the run at the end
+
+in the last step of the nextflow merge counts by libraries?

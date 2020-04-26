@@ -236,3 +236,23 @@ countedBundle
     }
     .collectFile(name: rInputTab, newLine: true)
     .set{fileForR}
+
+/* ----------------------------------------------------------------------------
+* Merge count tables per sample into 1 count table
+*----------------------------------------------------------------------------*/
+process mergeCounts {
+    publishDir "countTables", pattern: '{*Combined.csv}'
+
+    input:
+        path inputForR from fileForR
+
+    output:
+        path('*Combined.csv') into countTables
+
+    shell:
+    '''
+    Rscript --vanilla /home/litovche/Desktop/BRB-seq_pipeline/combineCounts.R !{inputForR} reads readsCombined.csv
+    Rscript --vanilla /home/litovche/Desktop/BRB-seq_pipeline/combineCounts.R !{inputForR} UMI umiCombined.csv
+    '''
+}
+
