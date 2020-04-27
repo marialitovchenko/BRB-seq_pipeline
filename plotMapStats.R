@@ -27,6 +27,7 @@
 
 # Libraries, colors, plotting themes ------------------------------------------
 library(data.table)
+library(DT)
 library(ggplot2)
 library(shiny)
 
@@ -35,7 +36,7 @@ idColNames <- c('RunID', 'LibraryID', 'SampleID', 'Specie', 'Genome',
                 'SubSample')
 
 # colors
-colorCode <- c("NOT mapped" = "#FFD9D9", "mapped to mult. loci" = '#FFBABA',
+colorCode <- c("mapped to mult. loci" = '#FFBABA', 
                "NOT mapped - mismatches" = '#C48484', 
                'NOT mapped - too short' = '#991D1D',
                'NOT mapped - other' = '#730202', 
@@ -57,12 +58,27 @@ mashaGgplot2Theme <- list(
 )
 
 # Functions -------------------------------------------------------------------
+#' arrangeLevels
+#' Rearranging levels of the vector, putting desirable the first
+#' @param x vector (character)
+#' @param firstLevel level to put first
+#' @return input vector as factor with the levels, there first level is 
+#' firstLevel
+arrangeLevels <- function(x, firstLevel) {
+  allLevels <- sort(unique(as.character(x)))
+  allLevels <- c(allLevels[allLevels != firstLevel], firstLevel)
+  result <- factor(x, levels = allLevels)
+  result
+}
+
 #' createBasePlot
 #' Function to create a base plot for the mapping stats
 #' @param dtToPlot data table to plot
 #' @param plotType string, plot type: "Percentage" or "Raw value"
+#' @param sortBy string, name of the mapped/unmapped type by which to
+#'               sort the plot
 #' @param plotColors vector color pallet for plot
-createBasePlot <- function(dtToPlot, plotType, plotColors) {
+createBasePlot <- function(dtToPlot, plotType, sortBy, plotColors) {
   if (plotType == 'Raw values') {
     dtToPlot <- dtToPlot[!grepl('%|total reads', variable)]
     dtToPlot[, value := value / 10^6]
@@ -76,6 +92,14 @@ createBasePlot <- function(dtToPlot, plotType, plotColors) {
       names(plotColors) <- paste('%', names(plotColors))
   } 
 
+  # sort the plot according to desired output
+  if (sortBy != 'Sample name') {
+    dtToPlot[, variable := arrangeLevels(variable, sortBy)]
+    subsampleSort <- dtToPlot[variable == sortBy][order(RunID, LibraryID, 
+                                                        value)]$SubSample
+    dtToPlot[, SubSample := factor(SubSample, levels = subsampleSort)]
+  }
+  
   result <- ggplot(dtToPlot, 
                    aes(x = SubSample, y = value, fill = variable)) +
                    geom_bar(stat = "identity") + xlab("Sample") + 
@@ -133,10 +157,12 @@ multiplot <- function(..., plotlist = NULL, file, cols=1, layout = NULL) {
 #' @param idCols column names which contain IDs
 #' @param runIDsToPlot vector of strings, IDs of runs to plot
 #' @param displayModeToPlot string, "Percentage" or "Raw values"
+#' @param sortPlotBy by which value to sort the plot, i.e. number of uniquely
+#'                   mapped reads
 #' @param colorPallete vector color pallet for plot
 #' @return ggplot
 plotMapStats <- function(dataTabWide, idCols, runIDsToPlot, displayModeToPlot,
-                         colorPallete) {
+                         sortPlotBy, colorPallete) {
   # select run ids to plot
   dataToPlot <- dataTabWide[RunID %in% runIDsToPlot]
   # add percetages, if required
@@ -157,8 +183,8 @@ plotMapStats <- function(dataTabWide, idCols, runIDsToPlot, displayModeToPlot,
   dataToPlot <- melt(dataToPlot, id.vars = idCols, verbose = F)
   
   # build the plot(s)
-  result <- createBasePlot(dataToPlot, displayModeToPlot, colorPallete)
-  
+  result <- createBasePlot(dataToPlot, displayModeToPlot, sortPlotBy,
+                           colorPallete)
   result
 }
 
@@ -223,8 +249,13 @@ percPlotWpx <- numericInput("percPlotW", label = "Plot width, px", value = 1000,
 
 # Selection of by which parameter to sort
 rawSortByBox <- selectInput("rawSortBy", label = "Sort values by ...", 
-                            choices = c('Sample name', "Total number of reads",
-                                        'Number of uniquely mapped reads'), 
+                            choices = c("Sample name", "uniquely mapped",
+                                        "mapped to mult. loci",
+                                        "NOT mapped - mismatches", 
+                                        'NOT mapped - too short',
+                                        'NOT mapped - other', 
+                                        'mapped to too many loci',
+                                        "uniquely mapped"), 
                             selected = 1, multiple = F)
 percSortByBox <- selectInput("rawSortBy", label = "Sort values by ...", 
                              choices = c('Sample name', 
@@ -310,7 +341,8 @@ server <- function(input, output, session) {
   # Tab with raw plot
   output$rawPlot <- renderPlot({plotMapStats(mapData(), idColNames,
                                              input$runsToDisplay,
-                                             'Raw values', colorCode)},
+                                             'Raw values', input$rawSortBy,
+                                             colorCode)},
                              width = rawPlotWidth,
                              height = rawPlotHeight)
   output$rawDown <- downloadHandler(
