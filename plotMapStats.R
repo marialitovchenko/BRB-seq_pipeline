@@ -202,6 +202,14 @@ samplesIDselect <- selectInput('samplesToDisplay', 'Samples to display', "",
 sideBarCtrl <- sidebarPanel(fileSelect, br(), runIDselect,
                             libsIDselect, samplesIDselect)
 
+# Assemble control panel for table --------------------------------------------
+tableOutSep <- radioButtons("tabSepar", "Field seaprator:",
+                             choices = c("Tab", "Space","Comma"))
+tabOutputName <- textInput(inputId = 'tabOutName', label = 'File name')
+tableDown <- downloadButton('tabDown', 'Download')
+tableOutputCtrl <- fluidRow(column(2, tableOutSep), column(3, tabOutputName),
+                            column(3, tableDown))
+
 # Assemble control panel for the plot display and output ----------------------
 # Numeric input to select height and width of the plot
 rawPlotHpx <- numericInput("rawPlotH", label = "Plot heigth, px", value = 600,
@@ -247,7 +255,7 @@ percPlotOutputCtrl <- fluidRow(column(3, percOutputName),
                                column(2, percOutputFile), column(3, percDown))
 
 # Assemble tab display of table and plots -------------------------------------
-tableViewTab <- tabPanel("Table", tableOutput("table"))
+tableViewTab <- tabPanel("Table", tableOutputCtrl, hr(), tableOutput("table"))
 rawValuesTab <- tabPanel("Raw values", rawPlotDisplayCtrl, rawPlotOutputCtrl,
                          hr(), plotOutput("rawPlot"))
 percViewTab <- tabPanel("Percentage", percPlotDisplayCtrl, percPlotOutputCtrl,
@@ -289,6 +297,16 @@ server <- function(input, output, session) {
   
   # table output
   output$table <- renderTable({mapData()[RunID %in% input$runsToDisplay]})
+  output$tabDown <- downloadHandler(
+                        filename = function() {paste0(input$tabOutName,
+                                                      '.csv')},
+                        content = function(file) {
+                          fieldSep = switch(input$tabSepar, "Tab" = '\t', 
+                                            "Space" = ' ',"Comma" = ',')
+                          write.table(mapData()[RunID %in% input$runsToDisplay], 
+                                      file, append = F, quote = F, sep = fieldSep, 
+                                      row.names = F, col.names = T)
+                        })
   # Tab with raw plot
   output$rawPlot <- renderPlot({plotMapStats(mapData(), idColNames,
                                              input$runsToDisplay,
