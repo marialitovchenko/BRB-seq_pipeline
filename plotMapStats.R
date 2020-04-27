@@ -204,10 +204,15 @@ sideBarCtrl <- sidebarPanel(fileSelect, br(), runIDselect,
 
 # Assemble control panel for the plot display and output ----------------------
 # Numeric input to select height and width of the plot
-plotHpx <- numericInput("plotH", label = "Plot heigth, px", value = 1400,
-                        min = 1400, max = 10000)
-plotWpx <- numericInput("plotW", label = "Plot width, px", value = 500,
-                        min = 500, max = 10000)
+rawPlotHpx <- numericInput("rawPlotH", label = "Plot heigth, px", value = 600,
+                           min = 100, max = 10000)
+rawPlotWpx <- numericInput("rawPlotW", label = "Plot width, px", value = 1000,
+                           min = 100, max = 10000)
+percPlotHpx <- numericInput("percPlotH", label = "Plot heigth, px", value = 600,
+                            min = 100, max = 10000)
+percPlotWpx <- numericInput("percPlotW", label = "Plot width, px", value = 1000,
+                            min = 100, max = 10000)
+
 # Selection of by which parameter to sort
 rawSortByBox <- selectInput("rawSortBy", label = "Sort values by ...", 
                             choices = c('Sample name', "Total number of reads",
@@ -218,29 +223,47 @@ percSortByBox <- selectInput("rawSortBy", label = "Sort values by ...",
                                          'Percentage of uniquely mapped reads'), 
                              selected = 1, multiple = F)
 
+# control of the plot output format
+rawOutputFile <- radioButtons(inputId = "rawPlotFileFormat", 
+                              label = "Select the file type",
+                              choices = list("png", "pdf"))
+rawOutputName <- textInput(inputId = 'rawPlotName', label = 'File name')
+rawDown <- downloadButton(outputId = "rawDown", label = "Download the plot")
+percOutputFile <- radioButtons(inputId = "percPlotFileFormat", 
+                               label = "Select the file type",
+                               choices = list("png", "pdf"))
+percOutputName <- textInput(inputId = 'percPlotName', label = 'File name')
+percDown <- downloadButton(outputId = "percDown", label = "Download the plot")
+
 # control for the raw values plot table
-rawPlotDisplayCtrl <- fluidRow(column(3, plotWpx), column(3, plotHpx),
+rawPlotDisplayCtrl <- fluidRow(column(2, rawPlotWpx), column(2, rawPlotHpx),
                                column(3, rawSortByBox))
+rawPlotOutputCtrl <- fluidRow(column(3, rawOutputName), 
+                              column(2, rawOutputFile), column(3, rawDown))
 # control for the percentage plot table
-percPlotDisplayCtrl <- fluidRow(column(3, plotWpx), column(3, plotHpx),
+percPlotDisplayCtrl <- fluidRow(column(2, percPlotWpx), column(2, percPlotHpx),
                                 column(3, percSortByBox))
+percPlotOutputCtrl <- fluidRow(column(3, percOutputName), 
+                               column(2, percOutputFile), column(3, percDown))
 
 # Assemble tab display of table and plots -------------------------------------
 tableViewTab <- tabPanel("Table", tableOutput("table"))
-rawValuesTab <- tabPanel("Raw values", rawPlotDisplayCtrl, hr(), 
-                         plotOutput("rawPlot"))
-percViewTab <- tabPanel("Percentage", percPlotDisplayCtrl, hr(),
-                        plotOutput("percPlot"))
+rawValuesTab <- tabPanel("Raw values", rawPlotDisplayCtrl, rawPlotOutputCtrl,
+                         hr(), plotOutput("rawPlot"))
+percViewTab <- tabPanel("Percentage", percPlotDisplayCtrl, percPlotOutputCtrl,
+                        hr(), plotOutput("percPlot"))
 tabView <- tabsetPanel(type = "tabs", tableViewTab, rawValuesTab, percViewTab)
 
+# User interface --------------------------------------------------------------
 # page title
 pageTitle <- paste("Mapping statistics of your runs:", 'A')
 
-ui <- fluidPage(titlePanel(pageTitle),
-  sidebarLayout(sideBarCtrl, mainPanel(tabView))
-)
+ui <- fluidPage(titlePanel(pageTitle), 
+                sidebarLayout(sideBarCtrl, mainPanel(tabView)))
 
+# Server ----------------------------------------------------------------------
 server <- function(input, output, session) {
+  # readind the data in
   mapData <- reactive({ 
     req(input$fileIn) # require that the input is available
     inFile <- input$fileIn
@@ -258,19 +281,58 @@ server <- function(input, output, session) {
     return(df)
   })
   
-  plotWidth <- reactive({input$plotW})
-  plotHeight <- reactive({input$plotH})
+  # plots width and heigth
+  rawPlotWidth <- reactive({input$rawPlotW})
+  rawPlotHeight <- reactive({input$rawPlotH})
+  percPlotWidth <- reactive({input$percPlotW})
+  percPlotHeight <- reactive({input$percPlotH})
   
+  # table output
   output$table <- renderTable({mapData()[RunID %in% input$runsToDisplay]})
+  # Tab with raw plot
   output$rawPlot <- renderPlot({plotMapStats(mapData(), idColNames,
                                              input$runsToDisplay,
                                              'Raw values', colorCode)},
-                             width = plotWidth,
-                             height = plotHeight)
+                             width = rawPlotWidth,
+                             height = rawPlotHeight)
+  output$rawDown <- downloadHandler(
+                        filename =  function() {paste(input$rawPlotName,
+                                                      input$rawPlotFileFormat,
+                                                      sep = ".")},
+                        content = function(file) {
+                          if(input$rawPlotFileFormat == "png") {
+                            png(file, width = input$rawPlotW, 
+                                height = input$rawPlotH, units = 'px')
+                          } else {
+                            pdf(file, width = input$rawPlotW / 72, 
+                                height = input$rawPlotH / 72)
+                          }
+                          print(plotMapStats(mapData(), idColNames,
+                                             input$runsToDisplay,
+                                             'Raw values', colorCode))
+                          dev.off()}) 
+  # Tab with percentage plot
   output$percPlot <- renderPlot({plotMapStats(mapData(), idColNames,
                                              input$runsToDisplay,
                                              'Percentage', colorCode)},
-                               width = plotWidth,
-                               height = plotHeight)
+                               width = percPlotWidth,
+                               height = percPlotHeight)
+  output$percDown <- downloadHandler(
+                         filename = function() {paste(input$percPlotName,
+                                                input$percPlotFileFormat,
+                                                sep = ".")},
+                         content = function(file) {
+                           if(input$percPlotFileFormat == "png") {
+                             png(file, width = input$percPlotW, 
+                                 height = input$percPlotH, units = 'px')
+                           } else {
+                             pdf(file, width = input$percPlotW / 72,
+                                 height = input$percPlotH / 72)
+                             }
+                           print(plotMapStats(mapData(), idColNames,
+                                              input$runsToDisplay,
+                                              'Percentage', colorCode))
+                           dev.off()}) 
 }
+
 shinyApp(ui, server)
