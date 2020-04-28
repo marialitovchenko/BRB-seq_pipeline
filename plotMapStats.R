@@ -359,7 +359,8 @@ server <- function(input, output, session) {
                           }
                           print(plotMapStats(mapData(), idColNames,
                                              input$runsToDisplay,
-                                             'Raw values', colorCode))
+                                             'Raw values', input$rawSortBy,
+                                             colorCode))
                           dev.off()}) 
   # Tab with percentage plot
   output$percPlot <- renderPlot({plotMapStats(mapData(), idColNames,
@@ -381,7 +382,8 @@ server <- function(input, output, session) {
                              }
                            print(plotMapStats(mapData(), idColNames,
                                               input$runsToDisplay,
-                                              'Percentage', colorCode))
+                                              'Percentage', perc$rawSortBy,
+                                              colorCode))
                            dev.off()}) 
 }
 
