@@ -19,10 +19,8 @@
 
 # Why not all files have mapping stats???
 
-# Add sort by
 
 # Add buttom to output raw mapping stats table
-# Add save plot
 # Add counts columns to table from R into nextflow
 
 # Libraries, colors, plotting themes ------------------------------------------
@@ -71,6 +69,29 @@ arrangeLevels <- function(x, firstLevel) {
   result
 }
 
+#' sortForPlot
+#' Sorts data table which is going to be plotted according to the value user
+#' wants it to be sorted. It all comes down actually to SubSample variable 
+#' having proper levels as it will go on X axis.
+#' @param dtPlot data table to plot in the future, ONLY 1 RUN ID
+#' @param sortVar variable level by which to sort, i.e. uniquely mapped
+#' @return data table ready for plotting, sorted as user wants it
+sortForPlot <- function(dtPlot, sortVar) {
+  if (sortVar != 'Sample name') {
+    # first of all, re-level "variable" so the one we're sorting with is first
+    # as it would be easier to see on the plot
+    dtPlot[, variable := arrangeLevels(variable, sortVar)]
+    # Since we're going to have subsample as X axis, Subsample needs to be 
+    # sorted according to the values of sortVar
+    subsampleSorted <- dtPlot[variable == sortVar]
+    subsampleSorted <- subsampleSorted[order(value)]$SubSample
+    dtPlot[, SubSample := factor(SubSample, levels = subsampleSorted)]
+  } else {
+    dtPlot[, SubSample := factor(SubSample, levels = unique(sort(SubSample)))]
+  } 
+  dtPlot
+}
+
 #' createBasePlot
 #' Function to create a base plot for the mapping stats
 #' @param dtToPlot data table to plot
@@ -78,37 +99,32 @@ arrangeLevels <- function(x, firstLevel) {
 #' @param sortBy string, name of the mapped/unmapped type by which to
 #'               sort the plot
 #' @param plotColors vector color pallet for plot
-createBasePlot <- function(dtToPlot, plotType, sortBy, plotColors) {
+createBasePlot <- function(dtToPlot, plotType, sortBy, withTitle = T,
+                           withLegend = T, plotColors) {
+  # give corresponding y axis title and plot title
   if (plotType == 'Raw values') {
-    dtToPlot <- dtToPlot[!grepl('%|total reads', variable)]
-    dtToPlot[, value := value / 10^6]
     yAxisName <- "Number of reads, mlns"
     plotTitle <- "Number of uniquely mapped/unmapped reads"
   }
   if (plotType == 'Percentage') {
-      dtToPlot <- dtToPlot[grepl('%', variable)]
-      yAxisName <- "Percentage of total reads"
-      plotTitle <- "Percentage of uniquely mapped/unmapped reads"
-      names(plotColors) <- paste('%', names(plotColors))
+    yAxisName <- "Percentage of total reads"
+    plotTitle <- "Percentage of uniquely mapped/unmapped reads"
+    names(plotColors) <- paste('%', names(plotColors))
   } 
-
-  # sort the plot according to desired output
-  if (sortBy != 'Sample name') {
-    dtToPlot[, variable := arrangeLevels(variable, sortBy)]
-    subsampleSort <- dtToPlot[variable == sortBy][order(RunID, LibraryID, 
-                                                        value)]$SubSample
-    dtToPlot[, SubSample := factor(SubSample, levels = subsampleSort)]
+  
+  result <- ggplot(dtToPlot, aes(x = SubSample, y = value, fill = variable)) +
+            geom_bar(stat = "identity") + xlab("Sample") + ylab(yAxisName) + 
+            mashaGgplot2Theme + 
+            scale_fill_manual("Legend", values = plotColors) + 
+            theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  if (withTitle) {
+    result <- result + ggtitle(plotTitle)
+  }
+  if (!withLegend) {
+    result <- result + theme(legend.position = "none")
   }
   
-  result <- ggplot(dtToPlot, 
-                   aes(x = SubSample, y = value, fill = variable)) +
-                   geom_bar(stat = "identity") + xlab("Sample") + 
-                   facet_grid(. ~ paste(RunID, LibraryID, sep = ': '), 
-                              scales = 'free_y') +
-                   ylab(yAxisName) + ggtitle(plotTitle) +
-                   scale_fill_manual("Legend", values = plotColors) + 
-                   mashaGgplot2Theme + 
-                   theme(axis.text.x = element_text(angle = 45, hjust = 1))
   result
 }
 
@@ -151,7 +167,7 @@ multiplot <- function(..., plotlist = NULL, file, cols=1, layout = NULL) {
   }
 }
 
-#' plotMapStats
+#' listOfPlotsMapStats
 #' Plots mapping stats for shiny
 #' @param dataTabWide data table to plot, wide format
 #' @param idCols column names which contain IDs
@@ -161,10 +177,11 @@ multiplot <- function(..., plotlist = NULL, file, cols=1, layout = NULL) {
 #'                   mapped reads
 #' @param colorPallete vector color pallet for plot
 #' @return ggplot
-plotMapStats <- function(dataTabWide, idCols, runIDsToPlot, displayModeToPlot,
-                         sortPlotBy, colorPallete) {
+listOfPlotsMapStats <- function(dataTabWide, idCols, runIDsToPlot,
+                                displayModeToPlot, sortPlotBy, colorPallete) {
   # select run ids to plot
   dataToPlot <- dataTabWide[RunID %in% runIDsToPlot]
+  
   # add percetages, if required
   if (displayModeToPlot == 'Percentage') {
     # select ID columns
@@ -178,14 +195,43 @@ plotMapStats <- function(dataTabWide, idCols, runIDsToPlot, displayModeToPlot,
     setnames(percStats, colnames(percStats), paste('%', colnames(percStats)))
     dataToPlotPerc <- cbind(dataToPlotPerc, percStats)
     dataToPlot <- merge(dataToPlot, dataToPlotPerc, by = idCols)
-  }
+  } 
+  
   # convert to long format
   dataToPlot <- melt(dataToPlot, id.vars = idCols, verbose = F)
+  if (displayModeToPlot != 'Percentage') {
+    dataToPlot[, value := value / 10^6]
+  }
   
-  # build the plot(s)
-  result <- createBasePlot(dataToPlot, displayModeToPlot, sortPlotBy,
-                           colorPallete)
-  result
+  # build the plot(s) for every run
+  allRunsPlotList <- list()
+  for (oneRunInd in 1:length(unique(dataToPlot$RunID))) {
+    oneRun <- unique(dataToPlot$RunID)[oneRunInd]
+    oneRunTD <- dataToPlot[RunID == oneRun]
+    oneRunTD <- sortForPlot(oneRunTD, sortPlotBy)
+    if (displayModeToPlot != 'Percentage') {
+      oneRunTD <- oneRunTD[variable != 'total reads']
+    }
+    
+    # in case of several libraries plotted side by side, we don't need double
+    # legend or title
+    giveTitle <- T
+    giveLegend <- F
+    if (oneRunInd > 1) {
+      giveTitle <- F
+    }
+    if (oneRunInd == length(unique(dataToPlot$RunID))) {
+      giveLegend <- T
+    }
+    
+    oneRunPlot <- createBasePlot(oneRunTD, displayModeToPlot, sortPlotBy,
+                                 giveTitle, giveLegend, colorPallete)
+    allRunsPlotList[[length(allRunsPlotList) + 1]] <- oneRunPlot
+  }
+  
+  # return list of plots because stupid multiplot doesn't want to save it in
+  # the oject
+  allRunsPlotList
 }
 
 #' readMapStatTab
@@ -222,7 +268,7 @@ fileSelect <- fileInput("fileIn", "Choose file containing mapping statistics",
 runIDselect <- selectInput('runsToDisplay', 'Runs to display', "", 
                            multiple = T)
 libsIDselect <- selectInput('libsToDisplay', 'Libraries to display', "", 
-                           multiple = T)
+                            multiple = T)
 samplesIDselect <- selectInput('samplesToDisplay', 'Samples to display', "",
                                multiple = T)
 sideBarCtrl <- sidebarPanel(fileSelect, br(), runIDselect,
@@ -230,7 +276,7 @@ sideBarCtrl <- sidebarPanel(fileSelect, br(), runIDselect,
 
 # Assemble control panel for table --------------------------------------------
 tableOutSep <- radioButtons("tabSepar", "Field seaprator:",
-                             choices = c("Tab", "Space","Comma"))
+                            choices = c("Tab", "Space","Comma"))
 tabOutputName <- textInput(inputId = 'tabOutName', label = 'File name')
 tableDown <- downloadButton('tabDown', 'Download')
 tableOutputCtrl <- fluidRow(column(2, tableOutSep), column(3, tabOutputName),
@@ -329,62 +375,67 @@ server <- function(input, output, session) {
   # table output
   output$table <- renderTable({mapData()[RunID %in% input$runsToDisplay]})
   output$tabDown <- downloadHandler(
-                        filename = function() {paste0(input$tabOutName,
-                                                      '.csv')},
-                        content = function(file) {
-                          fieldSep = switch(input$tabSepar, "Tab" = '\t', 
-                                            "Space" = ' ',"Comma" = ',')
-                          write.table(mapData()[RunID %in% input$runsToDisplay], 
-                                      file, append = F, quote = F, sep = fieldSep, 
-                                      row.names = F, col.names = T)
-                        })
+    filename = function() {paste0(input$tabOutName,
+                                  '.csv')},
+    content = function(file) {
+      fieldSep = switch(input$tabSepar, "Tab" = '\t', 
+                        "Space" = ' ',"Comma" = ',')
+      write.table(mapData()[RunID %in% input$runsToDisplay], 
+                  file, append = F, quote = F, sep = fieldSep, 
+                  row.names = F, col.names = T)
+    })
+  
   # Tab with raw plot
-  output$rawPlot <- renderPlot({plotMapStats(mapData(), idColNames,
-                                             input$runsToDisplay,
-                                             'Raw values', input$rawSortBy,
-                                             colorCode)},
-                             width = rawPlotWidth,
-                             height = rawPlotHeight)
+  output$rawPlot <- renderPlot({multiplot(plotlist = listOfPlotsMapStats(mapData(), idColNames,
+                                                                         input$runsToDisplay,
+                                                                         'Raw values', input$rawSortBy,
+                                                                         colorCode), 
+                                          cols = length(unique(input$runsToDisplay)))},
+                               width = rawPlotWidth,
+                               height = rawPlotHeight)
   output$rawDown <- downloadHandler(
-                        filename =  function() {paste(input$rawPlotName,
-                                                      input$rawPlotFileFormat,
-                                                      sep = ".")},
-                        content = function(file) {
-                          if(input$rawPlotFileFormat == "png") {
-                            png(file, width = input$rawPlotW, 
-                                height = input$rawPlotH, units = 'px')
-                          } else {
-                            pdf(file, width = input$rawPlotW / 72, 
-                                height = input$rawPlotH / 72)
-                          }
-                          print(plotMapStats(mapData(), idColNames,
-                                             input$runsToDisplay,
-                                             'Raw values', input$rawSortBy,
-                                             colorCode))
-                          dev.off()}) 
+    filename =  function() {paste(input$rawPlotName,
+                                  input$rawPlotFileFormat,
+                                  sep = ".")},
+    content = function(file) {
+      if(input$rawPlotFileFormat == "png") {
+        png(file, width = input$rawPlotW, 
+            height = input$rawPlotH, units = 'px')
+      } else {
+        pdf(file, width = input$rawPlotW / 72, 
+            height = input$rawPlotH / 72)
+      }
+      print(plotMapStats(mapData(), idColNames,
+                         input$runsToDisplay,
+                         'Raw values', input$rawSortBy,
+                         colorCode))
+      dev.off()}) 
   # Tab with percentage plot
-  output$percPlot <- renderPlot({plotMapStats(mapData(), idColNames,
-                                             input$runsToDisplay,
-                                             'Percentage', colorCode)},
-                               width = percPlotWidth,
-                               height = percPlotHeight)
+  output$percPlot <- renderPlot({multiplot(plotlist = listOfPlotsMapStats(mapData(), idColNames,
+                                                                          input$runsToDisplay,
+                                                                          'Percentage', 
+                                                                          input$percSortBy,
+                                                                          colorCode), 
+                                           cols = length(unique(input$runsToDisplay)))},
+                                width = percPlotWidth,
+                                height = percPlotHeight)
   output$percDown <- downloadHandler(
-                         filename = function() {paste(input$percPlotName,
-                                                input$percPlotFileFormat,
-                                                sep = ".")},
-                         content = function(file) {
-                           if(input$percPlotFileFormat == "png") {
-                             png(file, width = input$percPlotW, 
-                                 height = input$percPlotH, units = 'px')
-                           } else {
-                             pdf(file, width = input$percPlotW / 72,
-                                 height = input$percPlotH / 72)
-                             }
-                           print(plotMapStats(mapData(), idColNames,
-                                              input$runsToDisplay,
-                                              'Percentage', perc$rawSortBy,
-                                              colorCode))
-                           dev.off()}) 
+    filename = function() {paste(input$percPlotName,
+                                 input$percPlotFileFormat,
+                                 sep = ".")},
+    content = function(file) {
+      if(input$percPlotFileFormat == "png") {
+        png(file, width = input$percPlotW, 
+            height = input$percPlotH, units = 'px')
+      } else {
+        pdf(file, width = input$percPlotW / 72,
+            height = input$percPlotH / 72)
+      }
+      print(plotMapStats(mapData(), idColNames,
+                         input$runsToDisplay,
+                         'Percentage', perc$rawSortBy,
+                         colorCode))
+      dev.off()}) 
 }
 
 shinyApp(ui, server)
