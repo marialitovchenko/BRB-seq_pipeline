@@ -99,28 +99,26 @@ sortForPlot <- function(dtPlot, sortVar) {
 #' @param sortBy string, name of the mapped/unmapped type by which to
 #'               sort the plot
 #' @param plotColors vector color pallet for plot
-createBasePlot <- function(dtToPlot, plotType, sortBy, withTitle = T,
-                           withLegend = T, plotColors) {
+createBasePlot <- function(dtToPlot, plotType, sortBy, withLegend = T,
+                           plotColors) {
   # give corresponding y axis title and plot title
   if (plotType == 'Raw values') {
     yAxisName <- "Number of reads, mlns"
-    plotTitle <- "Number of uniquely mapped/unmapped reads"
+    plotTitle <- paste("Number of uniquely mapped/unmapped reads in", 
+                       unique(dtToPlot$RunID))
   }
   if (plotType == 'Percentage') {
     yAxisName <- "Percentage of total reads"
-    plotTitle <- "Percentage of uniquely mapped/unmapped reads"
+    plotTitle <- paste("Percentage of uniquely mapped/unmapped reads", 
+                       unique(dtToPlot$RunID))
     names(plotColors) <- paste('%', names(plotColors))
   } 
   
   result <- ggplot(dtToPlot, aes(x = SubSample, y = value, fill = variable)) +
             geom_bar(stat = "identity") + xlab("Sample") + ylab(yAxisName) + 
-            mashaGgplot2Theme + 
+            mashaGgplot2Theme + ggtitle(plotTitle) +
             scale_fill_manual("Legend", values = plotColors) + 
             theme(axis.text.x = element_text(angle = 45, hjust = 1))
-  
-  if (withTitle) {
-    result <- result + ggtitle(plotTitle)
-  }
   if (!withLegend) {
     result <- result + theme(legend.position = "none")
   }
@@ -190,13 +188,15 @@ listOfPlotsMapStats <- function(dataTabWide, idCols, runIDsToPlot,
     rawStats <- dataToPlot[, !colnames(dataToPlot) %in% idCols, with = F]
     # convert to percentages
     percStats <- apply(rawStats, 2, function(x) x / rawStats$`total reads`)
-    percStats <- 100 * as.data.table(percStats[, -1])
+    percStats <- 100 * as.data.table(percStats)
+    percStats[, 1] <- rawStats$`total reads`
     # merge with the input table
-    setnames(percStats, colnames(percStats), paste('%', colnames(percStats)))
+    setnames(percStats, colnames(percStats)[-1], 
+             paste('%', colnames(percStats)[-1]))
     dataToPlotPerc <- cbind(dataToPlotPerc, percStats)
-    dataToPlot <- merge(dataToPlot, dataToPlotPerc, by = idCols)
+    dataToPlot <- dataToPlotPerc
   } 
-  
+
   # convert to long format
   dataToPlot <- melt(dataToPlot, id.vars = idCols, verbose = F)
   if (displayModeToPlot != 'Percentage') {
@@ -209,23 +209,18 @@ listOfPlotsMapStats <- function(dataTabWide, idCols, runIDsToPlot,
     oneRun <- unique(dataToPlot$RunID)[oneRunInd]
     oneRunTD <- dataToPlot[RunID == oneRun]
     oneRunTD <- sortForPlot(oneRunTD, sortPlotBy)
-    if (displayModeToPlot != 'Percentage') {
-      oneRunTD <- oneRunTD[variable != 'total reads']
-    }
+    
+    oneRunTD <- oneRunTD[variable != 'total reads']
     
     # in case of several libraries plotted side by side, we don't need double
-    # legend or title
-    giveTitle <- T
+    # legend 
     giveLegend <- F
-    if (oneRunInd > 1) {
-      giveTitle <- F
-    }
     if (oneRunInd == length(unique(dataToPlot$RunID))) {
       giveLegend <- T
     }
     
     oneRunPlot <- createBasePlot(oneRunTD, displayModeToPlot, sortPlotBy,
-                                 giveTitle, giveLegend, colorPallete)
+                                 giveLegend, colorPallete)
     allRunsPlotList[[length(allRunsPlotList) + 1]] <- oneRunPlot
   }
   
@@ -295,17 +290,22 @@ percPlotWpx <- numericInput("percPlotW", label = "Plot width, px", value = 1000,
 
 # Selection of by which parameter to sort
 rawSortByBox <- selectInput("rawSortBy", label = "Sort values by ...", 
-                            choices = c("Sample name", "uniquely mapped",
+                            choices = c("Sample name", "total reads", 
+                                        "uniquely mapped",
                                         "mapped to mult. loci",
                                         "NOT mapped - mismatches", 
                                         'NOT mapped - too short',
                                         'NOT mapped - other', 
-                                        'mapped to too many loci',
-                                        "uniquely mapped"), 
+                                        'mapped to too many loci'), 
                             selected = 1, multiple = F)
-percSortByBox <- selectInput("rawSortBy", label = "Sort values by ...", 
-                             choices = c('Sample name', 
-                                         'Percentage of uniquely mapped reads'), 
+percSortByBox <- selectInput("percSortBy", label = "Sort values by ...", 
+                             choices = c("Sample name", "total reads", 
+                                         "% uniquely mapped",
+                                         "% mapped to mult. loci",
+                                         "% NOT mapped - mismatches", 
+                                         '% NOT mapped - too short',
+                                         '% NOT mapped - other', 
+                                         '% mapped to too many loci'), 
                              selected = 1, multiple = F)
 
 # control of the plot output format
