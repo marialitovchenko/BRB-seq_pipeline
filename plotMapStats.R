@@ -348,7 +348,7 @@ ui <- fluidPage(titlePanel(pageTitle),
 
 # Server ----------------------------------------------------------------------
 server <- function(input, output, session) {
-  # readind the data in
+  # reading the data in
   mapData <- reactive({ 
     req(input$fileIn) # require that the input is available
     inFile <- input$fileIn
@@ -358,22 +358,45 @@ server <- function(input, output, session) {
     # list all accessible runs
     uniqRuns <- unique(df$RunID)
     uniqLibs <- unique(df$LibraryID)
-    uniqSamples <- unique(df$SampleID)
+    uniqSubSamples <- unique(df$SubSample)
     updateSelectInput(session, inputId = 'runsToDisplay',
-                      choices = uniqRuns, selected = uniqRuns[1])
+                      choices = uniqRuns, selected = uniqRuns)
     updateSelectInput(session, inputId = 'libsToDisplay',
-                      choices = uniqLibs)
+                      choices = uniqLibs, selected = uniqLibs)
+    updateSelectInput(session, inputId = 'samplesToDisplay',
+                      choices = c('All', sort(uniqSubSamples)),
+                      selected = 'All')
     return(df)
   })
   
-  # plots width and heigth
-  rawPlotWidth <- reactive({input$rawPlotW})
-  rawPlotHeight <- reactive({input$rawPlotH})
-  percPlotWidth <- reactive({input$percPlotW})
-  percPlotHeight <- reactive({input$percPlotH})
+  observe({
+    runSel <- input$runsToDisplay
+    
+    # select libraries in those runs
+    libsInRun <- mapData()[, .(RunID, LibraryID)]
+    libsInRun <- libsInRun[!duplicated(libsInRun)]
+    libsInRun <- libsInRun[RunID %in% runSel]
+    # select samples in those runs
+    sampsInRun <- mapData()[, .(RunID, SubSample)]
+    sampsInRun <- sampsInRun[!duplicated(sampsInRun)]
+    sampsInRun <- sampsInRun[RunID %in% runSel]
+    
+    updateSelectInput(session, inputId = 'libsToDisplay',
+                      choices = libsInRun$LibraryID, 
+                      selected = libsInRun$LibraryID)
+    updateSelectInput(session, inputId = 'samplesToDisplay',
+                      choices = c('All', sort(sampsInRun$SubSample)),
+                      selected = 'All')
+    # table output
+    output$table <- renderTable({mapData()[RunID %in% input$runsToDisplay &
+                                             LibraryID %in% input$libsToDisplay &
+                                             ifelse(length(input$samplesToDisplay) == 1 &
+                                                      input$samplesToDisplay == 'All',
+                                                    T, SubSample %in% input$samplesToDisplay)]})
+    
+  })
   
-  # table output
-  output$table <- renderTable({mapData()[RunID %in% input$runsToDisplay]})
+   # table download
   output$tabDown <- downloadHandler(
     filename = function() {paste0(input$tabOutName,
                                   '.csv')},
@@ -384,6 +407,12 @@ server <- function(input, output, session) {
                   file, append = F, quote = F, sep = fieldSep, 
                   row.names = F, col.names = T)
     })
+  
+  # plots width and heigth
+  rawPlotWidth <- reactive({input$rawPlotW})
+  rawPlotHeight <- reactive({input$rawPlotH})
+  percPlotWidth <- reactive({input$percPlotW})
+  percPlotHeight <- reactive({input$percPlotH})
   
   # Tab with raw plot
   output$rawPlot <- renderPlot({multiplot(plotlist = listOfPlotsMapStats(mapData(), idColNames,
@@ -410,6 +439,7 @@ server <- function(input, output, session) {
                          'Raw values', input$rawSortBy,
                          colorCode))
       dev.off()}) 
+  
   # Tab with percentage plot
   output$percPlot <- renderPlot({multiplot(plotlist = listOfPlotsMapStats(mapData(), idColNames,
                                                                           input$runsToDisplay,
