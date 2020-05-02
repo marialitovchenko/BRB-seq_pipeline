@@ -18,14 +18,21 @@
 # REVISION: 21.04.2020
 
 # Why not all files have mapping stats???
-
-
 # Add buttom to output raw mapping stats table
 # Add counts columns to table from R into nextflow
+
+# DEBUG -----------------------------------------------------------------------
+#abu <- listOfPlotsMapStats(readMapStatTab('mapStatsTab.csv'), idColNames, 
+#                           c('NXT0540', 'NXT0555'), 'Raw values',
+#                           'total reads', colorCode)
+#ggarrange(plotlist = abu,
+#          labels = c("A", "B"),
+#          ncol = 2, nrow = 1, common.legend = TRUE, legend = 'bottom')
 
 # Libraries, colors, plotting themes ------------------------------------------
 library(data.table)
 library(DT)
+library(ggpubr)
 library(ggplot2)
 library(shiny)
 
@@ -99,70 +106,23 @@ sortForPlot <- function(dtPlot, sortVar) {
 #' @param sortBy string, name of the mapped/unmapped type by which to
 #'               sort the plot
 #' @param plotColors vector color pallet for plot
-createBasePlot <- function(dtToPlot, plotType, sortBy, withLegend = T,
-                           plotColors) {
+createBasePlot <- function(dtToPlot, plotType, sortBy, plotColors) {
   # give corresponding y axis title and plot title
   if (plotType == 'Raw values') {
     yAxisName <- "Number of reads, mlns"
-    plotTitle <- paste("Number of uniquely mapped/unmapped reads in", 
-                       unique(dtToPlot$RunID))
   }
   if (plotType == 'Percentage') {
     yAxisName <- "Percentage of total reads"
-    plotTitle <- paste("Percentage of uniquely mapped/unmapped reads", 
-                       unique(dtToPlot$RunID))
     names(plotColors) <- paste('%', names(plotColors))
   } 
   
   result <- ggplot(dtToPlot, aes(x = SubSample, y = value, fill = variable)) +
             geom_bar(stat = "identity") + xlab("Sample") + ylab(yAxisName) + 
-            mashaGgplot2Theme + ggtitle(plotTitle) +
+            mashaGgplot2Theme + 
             scale_fill_manual("Legend", values = plotColors) + 
             theme(axis.text.x = element_text(angle = 45, hjust = 1))
-  if (!withLegend) {
-    result <- result + theme(legend.position = "none")
-  }
   
   result
-}
-
-#' multiplot
-#' Returns multiplot of several ggplot2 plots
-#' @param list of ggplot2 object
-multiplot <- function(..., plotlist = NULL, file, cols=1, layout = NULL) {
-  library(grid)
-  
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-  
-  numPlots = length(plots)
-  
-  # If layout is NULL, then use 'cols' to determine layout
-  if (is.null(layout)) {
-    # Make the panel
-    # ncol: Number of columns of plots
-    # nrow: Number of rows needed, calculated from # of cols
-    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
-                     ncol = cols, nrow = ceiling(numPlots/cols))
-  }
-  
-  if (numPlots==1) {
-    print(plots[[1]])
-    
-  } else {
-    # Set up the page
-    grid.newpage()
-    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
-    
-    # Make each plot, in the correct location
-    for (i in 1:numPlots) {
-      # Get the i,j matrix positions of the regions that contain this subplot
-      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
-      
-      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
-                                      layout.pos.col = matchidx$col))
-    }
-  }
 }
 
 #' listOfPlotsMapStats
@@ -209,18 +169,10 @@ listOfPlotsMapStats <- function(dataTabWide, idCols, runIDsToPlot,
     oneRun <- unique(dataToPlot$RunID)[oneRunInd]
     oneRunTD <- dataToPlot[RunID == oneRun]
     oneRunTD <- sortForPlot(oneRunTD, sortPlotBy)
-    
     oneRunTD <- oneRunTD[variable != 'total reads']
     
-    # in case of several libraries plotted side by side, we don't need double
-    # legend 
-    giveLegend <- F
-    if (oneRunInd == length(unique(dataToPlot$RunID))) {
-      giveLegend <- T
-    }
-    
-    oneRunPlot <- createBasePlot(oneRunTD, displayModeToPlot, sortPlotBy,
-                                 giveLegend, colorPallete)
+    oneRunPlot <- createBasePlot(oneRunTD, displayModeToPlot, sortPlotBy, 
+                                 colorPallete)
     allRunsPlotList[[length(allRunsPlotList) + 1]] <- oneRunPlot
   }
   
@@ -396,7 +348,7 @@ server <- function(input, output, session) {
     
   })
   
-   # table download
+  # table download
   output$tabDown <- downloadHandler(
     filename = function() {paste0(input$tabOutName,
                                   '.csv')},
@@ -415,57 +367,76 @@ server <- function(input, output, session) {
   percPlotHeight <- reactive({input$percPlotH})
   
   # Tab with raw plot
-  output$rawPlot <- renderPlot({multiplot(plotlist = listOfPlotsMapStats(mapData(), idColNames,
-                                                                         input$runsToDisplay,
-                                                                         'Raw values', input$rawSortBy,
-                                                                         colorCode), 
-                                          cols = length(unique(input$runsToDisplay)))},
-                               width = rawPlotWidth,
-                               height = rawPlotHeight)
+  output$rawPlot <- renderPlot({
+                    ggarrange(plotlist = listOfPlotsMapStats(mapData(),
+                                                             idColNames,
+                                                             input$runsToDisplay,
+                                                             'Raw values', 
+                                                             input$rawSortBy,
+                                                             colorCode),
+                              labels = input$runsToDisplay, common.legend = T,
+                              legend = 'bottom', 
+                              ncol = length(input$runsToDisplay))},
+                    width = rawPlotWidth, height = rawPlotHeight)
   output$rawDown <- downloadHandler(
-    filename =  function() {paste(input$rawPlotName,
-                                  input$rawPlotFileFormat,
-                                  sep = ".")},
-    content = function(file) {
-      if(input$rawPlotFileFormat == "png") {
-        png(file, width = input$rawPlotW, 
-            height = input$rawPlotH, units = 'px')
-      } else {
-        pdf(file, width = input$rawPlotW / 72, 
-            height = input$rawPlotH / 72)
-      }
-      print(plotMapStats(mapData(), idColNames,
-                         input$runsToDisplay,
-                         'Raw values', input$rawSortBy,
-                         colorCode))
-      dev.off()}) 
+                    filename =  function() {paste(input$rawPlotName,
+                                            input$rawPlotFileFormat,
+                                            sep = ".")},
+                    content = function(file) {
+                              if(input$rawPlotFileFormat == "png") {
+                                png(file, width = input$rawPlotW, 
+                                    height = input$rawPlotH, units = 'px')
+                              } else {
+                                pdf(file, width = input$rawPlotW / 72, 
+                                    height = input$rawPlotH / 72)
+                              }
+                      print(ggarrange(plotlist = listOfPlotsMapStats(mapData(),
+                                                                     idColNames,
+                                                                     input$runsToDisplay,
+                                                                     'Raw values', 
+                                                                     input$rawSortBy,
+                                                                     colorCode),
+                                      labels = input$runsToDisplay, 
+                                      common.legend = T,
+                                      legend = 'bottom', 
+                                      ncol = length(input$runsToDisplay)))
+                      dev.off()}) 
   
   # Tab with percentage plot
-  output$percPlot <- renderPlot({multiplot(plotlist = listOfPlotsMapStats(mapData(), idColNames,
-                                                                          input$runsToDisplay,
-                                                                          'Percentage', 
-                                                                          input$percSortBy,
-                                                                          colorCode), 
-                                           cols = length(unique(input$runsToDisplay)))},
-                                width = percPlotWidth,
-                                height = percPlotHeight)
+  output$percPlot <- renderPlot({
+                     ggarrange(plotlist = listOfPlotsMapStats(mapData(),
+                                                              idColNames,
+                                                              input$runsToDisplay,
+                                                              'Percentage', 
+                                                              input$percSortBy,
+                                                              colorCode),
+                               labels = input$runsToDisplay, common.legend = T,
+                               legend = 'bottom', 
+                               ncol = length(input$runsToDisplay))},
+                     width = percPlotWidth, height = percPlotHeight)
   output$percDown <- downloadHandler(
-    filename = function() {paste(input$percPlotName,
-                                 input$percPlotFileFormat,
-                                 sep = ".")},
-    content = function(file) {
-      if(input$percPlotFileFormat == "png") {
-        png(file, width = input$percPlotW, 
-            height = input$percPlotH, units = 'px')
-      } else {
-        pdf(file, width = input$percPlotW / 72,
-            height = input$percPlotH / 72)
-      }
-      print(plotMapStats(mapData(), idColNames,
-                         input$runsToDisplay,
-                         'Percentage', perc$rawSortBy,
-                         colorCode))
-      dev.off()}) 
+                     filename = function() {paste(input$percPlotName, 
+                                                  input$percPlotFileFormat,
+                                                  sep = ".")},
+                     content = function(file) {
+                               if(input$percPlotFileFormat == "png") {
+                                 png(file, width = input$percPlotW,
+                                     height = input$percPlotH, units = 'px')
+                               } else {
+                                 pdf(file, width = input$percPlotW / 72,
+                                     height = input$percPlotH / 72)
+                               }
+                      print(ggarrange(plotlist = listOfPlotsMapStats(mapData(),
+                                                                     idColNames,
+                                                                     input$runsToDisplay,
+                                                                     'Percentage', 
+                                                                     input$percSortBy,
+                                                                     colorCode),
+                                       labels = input$runsToDisplay, 
+                                       common.legend = T,
+                                       legend = 'bottom', 
+                                       ncol = length(input$runsToDisplay)))
+                       dev.off()}) 
 }
 
 shinyApp(ui, server)
