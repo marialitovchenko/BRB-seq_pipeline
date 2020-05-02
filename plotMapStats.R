@@ -293,7 +293,7 @@ tabView <- tabsetPanel(type = "tabs", tableViewTab, rawValuesTab, percViewTab)
 
 # User interface --------------------------------------------------------------
 # page title
-pageTitle <- paste("Mapping statistics of your runs:", 'A')
+pageTitle <- paste("Mapping statistics of your runs")
 
 ui <- fluidPage(titlePanel(pageTitle), 
                 sidebarLayout(sideBarCtrl, mainPanel(tabView)))
@@ -333,19 +333,23 @@ server <- function(input, output, session) {
     sampsInRun <- sampsInRun[!duplicated(sampsInRun)]
     sampsInRun <- sampsInRun[RunID %in% runSel]
     
+    # table output
+    selectedDT <- mapData()
+    selectedDT <- selectedDT[RunID %in% input$runsToDisplay &
+                             LibraryID %in% input$libsToDisplay]
+    #if (identical(input$samplesToDisplay, 'All')) {
+    #  selectedDT <- selectedDT
+    #} else {
+    #  selectedDT <- selectedDT[SubSample %in% input$samplesToDisplay]
+    #}
+    output$table <- renderTable({selectedDT})
+    
     updateSelectInput(session, inputId = 'libsToDisplay',
                       choices = libsInRun$LibraryID, 
                       selected = libsInRun$LibraryID)
     updateSelectInput(session, inputId = 'samplesToDisplay',
                       choices = c('All', sort(sampsInRun$SubSample)),
                       selected = 'All')
-    # table output
-    output$table <- renderTable({mapData()[RunID %in% input$runsToDisplay &
-                                             LibraryID %in% input$libsToDisplay &
-                                             ifelse(length(input$samplesToDisplay) == 1 &
-                                                      input$samplesToDisplay == 'All',
-                                                    T, SubSample %in% input$samplesToDisplay)]})
-    
   })
   
   # table download
@@ -368,7 +372,17 @@ server <- function(input, output, session) {
   
   # Tab with raw plot
   output$rawPlot <- renderPlot({
-                    ggarrange(plotlist = listOfPlotsMapStats(mapData(),
+                    # select data to plot 
+                    selectedDT <- mapData()
+                    selectedDT <- selectedDT[RunID %in% input$runsToDisplay &
+                                             LibraryID %in% input$libsToDisplay]
+                    if (identical(input$samplesToDisplay, 'All')) {
+                      selectedDT <- selectedDT
+                    } else {
+                      selectedDT <- selectedDT[SubSample %in% input$samplesToDisplay]
+                    }
+                    # make plots
+                    ggarrange(plotlist = listOfPlotsMapStats(selectedDT,
                                                              idColNames,
                                                              input$runsToDisplay,
                                                              'Raw values', 
@@ -404,7 +418,17 @@ server <- function(input, output, session) {
   
   # Tab with percentage plot
   output$percPlot <- renderPlot({
-                     ggarrange(plotlist = listOfPlotsMapStats(mapData(),
+                     # select data to plot 
+                     selectedDT <- mapData()
+                     selectedDT <- selectedDT[RunID %in% input$runsToDisplay &
+                                              LibraryID %in% input$libsToDisplay]
+                     if (identical(input$samplesToDisplay, 'All')) {
+                        selectedDT <- selectedDT
+                     } else {
+                        selectedDT <- selectedDT[SubSample %in% input$samplesToDisplay]
+                     }
+                     # make plots
+                     ggarrange(plotlist = listOfPlotsMapStats(selectedDT,
                                                               idColNames,
                                                               input$runsToDisplay,
                                                               'Percentage', 
