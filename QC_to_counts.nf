@@ -360,7 +360,7 @@ process mergeCounts {
 
     shell:
     '''
-    Rscript --vanilla /home/litovche/Desktop/BRB-seq_pipeline/combineCounts.R !{inputForR} reads readsCombined.csv
-    Rscript --vanilla /home/litovche/Desktop/BRB-seq_pipeline/combineCounts.R !{inputForR} UMI umiCombined.csv
+    Rscript --vanilla /home/litovche/Desktop/BRB-seq_pipeline/combineCounts.R !{inputForR} reads readsCombined
+    Rscript --vanilla /home/litovche/Desktop/BRB-seq_pipeline/combineCounts.R !{inputForR} UMI umiCombined
     '''
 }

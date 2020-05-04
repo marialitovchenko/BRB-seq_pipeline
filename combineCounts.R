@@ -7,8 +7,8 @@
 #        Takes 2 arguments: 
 #        1) what to merge: UMI or reads
 #        2) path to the table containing info about samples
-#        3) output path
-# Rscript --vanilla combineCounts.R reads path/to/count/folder output/path
+#        3) output prefix
+# Rscript --vanilla combineCounts.R reads path/to/count/folder this_are_reads
 #
 # DESCRIPTION: Merging counts from different demultiplex mapped files into one
 #              with use of data.table. Names of the samples are inferred from 
@@ -102,6 +102,7 @@ mergeCountsInto1Tab <- function(countsPaths) {
     countTab <- merge(countTab, countCols[[i]], all = T)
     setkey(countTab, Gene_id, Gene_name)
   }
+  setcolorder(countTab, sort(colnames(countTab)))
   countTab
 }
 
@@ -109,7 +110,7 @@ mergeCountsInto1Tab <- function(countsPaths) {
 args <- commandArgs(trailingOnly = T)
 infoTabPath <- args[1]
 mode <- args[2]
-outputPath <- args[3]
+outputPref <- args[3]
 
 # check that all arguments were submitted
 if (is.na(infoTabPath)) {
@@ -151,7 +152,13 @@ infoNames <- c('Run', 'Library', 'Sample', 'Specie', 'Genome',
 setnames(infoTab, colnames(infoTab), infoNames)
 
 # perform the merge
-mergedTab <- switch(mode, "reads" = mergeCountsInto1Tab(infoTab$Counts_Reads),
-                    "UMI" = mergeCountsInto1Tab(infoTab$Counts_UMI))
-write.table(mergedTab, outputPath, append = F, quote = F, sep = '\t',
-            row.names = F, col.names = T)
+for (run in unique(infoTab$Run)) {
+  for (lib in unique(infoTab[Run == run]$Library)) {
+    sampsInLibRun <- infoTab[Run == run & Library == lib]
+    mergedTab <- switch(mode, 
+                        "reads" = mergeCountsInto1Tab(sampsInLibRun$Counts_UMI),
+                        "UMI" = mergeCountsInto1Tab(sampsInLibRun$Counts_UMI))
+    write.table(mergedTab, paste0(outputPref, '_', run, '_', lib, '.csv'),
+                append = F, quote = F, sep = '\t', row.names = F, col.names = T)
+  }
+}
