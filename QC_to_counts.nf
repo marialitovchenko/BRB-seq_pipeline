@@ -13,6 +13,15 @@ numbOfProc = 4
 rInputTab="/home/litovche/Desktop/BRB-seq_pipeline/rInputTab.csv"
 mapStatsTab="/home/litovche/Desktop/BRB-seq_pipeline/mapStatsTab.csv"
 
+log.info """\
+                          B R B - s e q   N E X T F L O W   P I P E L I N E    
+         ================================================================================
+         Input table        : ${mapStatsTab}
+         Genomes folder     : ${genomePath}
+         BRB-seq tools path : ${brbseqTools}
+         """
+         .stripIndent()
+
 /* ----------------------------------------------------------------------------
 * Read input table
 *----------------------------------------------------------------------------*/
@@ -256,3 +265,6 @@ process mergeCounts {
     '''
 }
 
+workflow.onComplete { 
+	println ( workflow.success ? "\nDone! Open the following report in your browser --> $userDir/multiqc_report.html\n" : "Oops .. something went wrong" )
+}
