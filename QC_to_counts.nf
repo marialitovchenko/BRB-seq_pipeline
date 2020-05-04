@@ -1,24 +1,124 @@
 #!/usr/bin/env nextflow
 
-//user directory
-userDir="/home/litovche/Desktop/BRB-seq_pipeline/BRB_seq_PipelineDevelopment/"
+def helpMessage() {
+
+    log.info """ 
+    B R B - s e q   N E X T F L O W   P I P E L I N E    
+    ================================================================================
+    Welcome to the Nextflow BRB-seq analysis command line pipeline!
+
+    Usage:
+    The typical command for running the pipeline is as follows:
+    nextflow forTest.nf --inputTab table.csv --FQdir fqDir --genomeDir allGenomes --outputDir theResult
+
+    or
+
+    nextflow forTest.nf --inputTab table.csv
+
+    Mandatory arguments:
+      --inputTab        Path to the table containing information about input 
+                        data. The table should have following columns: RunID,
+                        (i.e. NXT0540), LibraryID (i.e. nxid12916), SampleID
+                        (i.e. BRBseq_v3_plate_1_S25), Specie (i.e. Hsapiens),
+                        Genome (i.e. hg38). Specie and Genome indicate to which
+                        genome version of which specie sample should be aligned
+                        to.  
+
+                        If no FQdir is provided (see below), the system will 
+                        assume that input fastq files are located in 
+                        [current dir]/RunID/LibraryID. 
+
+                        If no genomeDir is provided (see below), the system 
+                        will that STAR indexed genome is located in
+                        [current dir]/Specie/Genome
+
+                        If no outputDir is provided (see below), the system 
+                        will output files in the current directory
+
+    
+    Optional arguments:
+    This arguments are not going to be needed with use of graphical user
+    interface
+      --FQdir           Path to the directory containing folders (one per run) 
+                        with fastq files
+      --genomeDir       Path to the directory containing STAR indexed genomes
+      --outputDir       Path to the output directory
+      """.stripIndent()
+}
+
+// Show help message
+if (params.help) {
+    helpMessage()
+    exit 0
+}
+
+/* ----------------------------------------------------------------------------
+* Input handling
+*----------------------------------------------------------------------------*/
+// path to the input table with samples
+sampleTabPath = file(params.inputTab)
+
+//user directory: directory which contains all the fastq files
+params.FQdir = file('.')
+userDir = file(params.FQdir)
+// genomes directory: directory with all compiled STAR indexed genomes
+params.genomeDir = file('.')
+genomePath = file(params.genomeDir)
+// output folder
+params.outputDir = file('.')
+outputDir = file(params.outputDir)
+
 // also should be in tech dir
 brbseqTools="/home/litovche/bin/BRBseqTools.1.5.jar"
-genomePath="/home/litovche/Documents/RefGen/chr21human/"
-
-// path to the input table with samples
-sampleTabPath = 'test_input/sampleTable.csv'
 numbOfProc = 4
 
 rInputTab="/home/litovche/Desktop/BRB-seq_pipeline/rInputTab.csv"
-mapStatsTab="/home/litovche/Desktop/BRB-seq_pipeline/mapStatsTab.csv"
+mapStatsTab = outputDir + "/mapStatsTab.csv"
+
+
+/* ----------------------------------------------------------------------------
+* LOG: inform user about all the inputs
+*----------------------------------------------------------------------------*/
+// create channel which reads from the input table with samples
+sampleTabInfoCh = Channel.fromPath( sampleTabPath )
+sampleTabInfoCh
+    .splitCsv(header: true, sep:'\t')
+    .into { logFqFiles; logGenomesFiles }
+
+logFqFiles
+    .map{ row ->  userDir.toString() + '/' + row.RunID.toString() + '/' + row.LibraryID.toString() }
+    .unique()
+    .toList()
+    .set{logFqFiles}
+
+logGenomesFiles
+    .map{ row ->  genomePath.toString() + '/' + row.Specie.toString() + '/' + row.Genome.toString() }
+    .unique()
+    .toList()
+    .set{logGenomesFiles}
 
 log.info """\
-                          B R B - s e q   N E X T F L O W   P I P E L I N E    
+            B R B - s e q   N E X T F L O W   P I P E L I N E    
          ================================================================================
-         Input table        : ${mapStatsTab}
-         Genomes folder     : ${genomePath}
-         BRB-seq tools path : ${brbseqTools}
+         Submitted input table          : ${sampleTabPath}
+         Expect to find fastq-s in      : ${logFqFiles.toString().replaceAll(/DataflowVariable.value../, '').replaceAll(/..$/, '')}
+         Expect to find genomes in      : ${logGenomesFiles.toString().replaceAll(/DataflowVariable.value../, '').replaceAll(/..$/, '')}
+         BRBseq tools in                : ${brbseqTools}
+         Output folder                  : ${outputDir}
+
+         Upon completion, following folders are going to be created:
+         ${outputDir}/trimmed
+         ${outputDir}/demultiplexed
+         ${outputDir}/mapped
+         ${outputDir}/mapStats
+         ${outputDir}/counts
+         ${outputDir}/countTables
+
+         Mapping statistics could be found in: ${mapStatsTab}
+
+         ================================================================================
+
+         L E T' S   G O ! ! !    
          """
          .stripIndent()
 
@@ -263,8 +363,4 @@ process mergeCounts {
     Rscript --vanilla /home/litovche/Desktop/BRB-seq_pipeline/combineCounts.R !{inputForR} reads readsCombined.csv
     Rscript --vanilla /home/litovche/Desktop/BRB-seq_pipeline/combineCounts.R !{inputForR} UMI umiCombined.csv
     '''
-}
-
-workflow.onComplete { 
-	println ( workflow.success ? "\nDone! Open the following report in your browser --> $userDir/multiqc_report.html\n" : "Oops .. something went wrong" )
 }
