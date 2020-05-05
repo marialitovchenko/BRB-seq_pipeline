@@ -2,24 +2,24 @@
 
 def helpMessage() {
 
-    log.info """ 
-    B R B - s e q   N E X T F L O W   P I P E L I N E    
+    log.info """
+    -\033[41m B R B - s e q   N E X T F L O W   P I P E L I N E v1.0\033[0m-
     ================================================================================
     Welcome to the Nextflow BRB-seq analysis command line pipeline!
 
     Usage:
-    The typical command for running the pipeline is as follows:
-    nextflow forTest.nf --inputTab table.csv --FQdir fqDir --genomeDir allGenomes --outputDir theResult
+    The \033[1;91mtypical\033[0m command for running the pipeline is as follows:
+    nextflow forTest.nf \033[1;91m--inputTab\033[0m table.csv \033[1;91m--FQdir\033[0m fqDir \033[1;91m--genomeDir\033[0m allGenomes \033[1;91m--outputDir\033[0m theResult
 
     or
 
     nextflow forTest.nf --inputTab table.csv
 
-    to put the pipeline into background mode:
-    nextflow forTest.nf --inputTab table.csv --FQdir fqDir --genomeDir allGenomes --outputDir theResult -bg
+    to put the pipeline into \033[1;91mbackground\033[0m mode:
+    nextflow forTest.nf \033[1;91m--inputTab\033[0m table.csv \033[1;91m--FQdir\033[0m fqDir \033[1;91m--genomeDir\033[0m allGenomes \033[1;91m--outputDir\033[0m theResult \033[1;91m-bg\033[0m
 
-    Mandatory arguments:
-      --inputTab        Path to the table containing information about input 
+    \033[1;91mMandatory\033[0m arguments:
+      \033[1;91m--inputTab\033[0m        Path to the table containing information about input 
                         data. The table should have following columns: RunID,
                         (i.e. NXT0540), LibraryID (i.e. nxid12916), SampleID
                         (i.e. BRBseq_v3_plate_1_S25), Specie (i.e. Hsapiens),
@@ -39,17 +39,18 @@ def helpMessage() {
                         will output files in the current directory
 
     
-    Optional arguments:
+    \033[1;91mOptional\033[0m arguments:
     This arguments are not going to be needed with use of graphical user
     interface
-      --FQdir           Path to the directory containing folders (one per run) 
+      \033[1;91m--FQdir\033[0m           Path to the directory containing folders (one per run) 
                         with fastq files
-      --genomeDir       Path to the directory containing STAR indexed genomes
-      --outputDir       Path to the output directory
-      -bg               Puts execution of the pipeline into background mode
-      -resume           Resumes execution of the pipeline from the moment it 
+      \033[1;91m--genomeDir\033[0m       Path to the directory containing STAR indexed genomes
+      \033[1;91m--outputDir\033[0m       Path to the output directory
+      \033[1;91m-bg\033[0m               Puts execution of the pipeline into background mode
+      \033[1;91m-resume\033[0m           Resumes execution of the pipeline from the moment it 
                         was interrupted
       """.stripIndent()
+
 }
 
 // Show help message
@@ -310,8 +311,7 @@ process countReads {
     // Hungry for memory, so I give more, tries 3 times, gives us afterwards
     memory { 2.GB * task.attempt }
     time { 1.hour * task.attempt }
-    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
-    errorStrategy { task.exitStatus in 1..136 ? 'ignore' }
+    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'ignore' }
     maxRetries 3
 
     input:
