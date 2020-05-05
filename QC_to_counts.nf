@@ -300,7 +300,7 @@ mappingStatsAggr
 *----------------------------------------------------------------------------*/
 process countReads {
     publishDir "counts/${LibraryID}/${SampleID}", pattern: '{*.detailed.txt}'
-    errorStrategy 'retry'
+    errorStrategy 'ignore'
 
     // Hungry for memory, so I give more, tries 3 times, gives us afterwards
     memory { 2.GB * task.attempt }
