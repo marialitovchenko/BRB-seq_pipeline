@@ -3,7 +3,7 @@
 def helpMessage() {
 
     log.info """
-    -\033[41m B R B - s e q   N E X T F L O W   P I P E L I N E v1.0\033[0m-
+    -      \033[41m B R B - s e q   N E X T F L O W   P I P E L I N E v1.0\033[0m-
     ================================================================================
     Welcome to the Nextflow BRB-seq analysis command line pipeline!
 
@@ -105,7 +105,7 @@ logGenomesFiles
     .set{logGenomesFiles}
 
 log.info """\
-         -\033[1;91m   B R B - s e q   N E X T F L O W   P I P E L I N E \033[0m-   
+         -        \033[1;91m   B R B - s e q   N E X T F L O W   P I P E L I N E \033[0m-   
          ================================================================================
          \033[1;91m Input summary: \033[0m
          Submitted input table          : ${sampleTabPath}
@@ -121,13 +121,14 @@ log.info """\
          ${outputDir}/mapped	:	folder containing mapped bam files
          ${outputDir}/mapStats	:	folder containing log files produced by STAR
          ${outputDir}/counts	:	folder containing counts for individual samples
-         \033[1;91m${outputDir}/countTables\033[0m	:	folder containing final \033[1;91mcount tables\033[0m
+         \033[1;91m${outputDir}/countTables\033[0m	:	folder containing \033[1;91mfinal count tables\033[0m
 
-         Mapping statistics could be found in: ${mapStatsTab} and further visualized with
+         Mapping statistics could be found in: ${mapStatsTab} 
+         and further visualized with
 
 
-	 \033[1;91mImportant note:\033[0m: you may not see some of the samples in the final
-	 count tables due to 0 reads being accosiated to the give barcodes.
+         \033[1;91mImportant note:\033[0m: you may not see some of the samples in the final
+         count tables due to 0 reads being accosiated to the give barcodes.
 
          ================================================================================
 
