@@ -137,7 +137,7 @@ sampleTabCh
 * Trim reads by quality and adapterss with trimgalore
 *----------------------------------------------------------------------------*/
 process trimReads {
-    publishDir "trimmed", pattern: '*_val_*.fq.gz' 
+    publishDir "${outputDir}/trimmed", pattern: '*_val_*.fq.gz' 
 
     input:
     tuple RunID, LibraryID, SampleID, Specie, Genome from sampleTab
@@ -157,7 +157,6 @@ process trimReads {
              grep !{SampleID} | grep !{params.R2code} | \
              grep "!{params.fastqExtens}")
     # perform trimming with trim galore
-    echo !{params.trimGalore_allParams}
     trim_galore --paired $R1path $R2path --basename !{SampleID} \
                 !{params.trimGalore_allParams}
     '''
@@ -183,7 +182,7 @@ process trimReads {
 * Demultiplex reads
 *----------------------------------------------------------------------------*/
 process demultiplex {
-    publishDir "demultiplexed/${LibraryID}/${SampleID}", pattern: '*.fastq.gz'
+    publishDir "${outputDir}/demultiplexed/${LibraryID}/${SampleID}", pattern: '*.fastq.gz'
 
     input:
     tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, 
@@ -221,9 +220,10 @@ demultiplexBundle
 * Map demultiplexed reads to reference genome with STAR
 *----------------------------------------------------------------------------*/
 process mapWithStar {
-    publishDir "mapped/${LibraryID}/${SampleID}", 
+    publishDir "${outputDir}/mapped/${LibraryID}/${SampleID}", 
                 pattern: '*.sortedByCoord.out.bam'
-    publishDir "mapStats/${LibraryID}/${SampleID}", pattern: '*_Log.final.out'
+    publishDir "${outputDir}mapStats/${LibraryID}/${SampleID}", 
+                pattern: '*_Log.final.out'
 
     // STAR is hungry for memory, so I give more; tries 3 times, gives us
     // afterwards
@@ -299,7 +299,7 @@ mappingStatsAggr
 * Count reads in demultiplexed trimmed bams
 *----------------------------------------------------------------------------*/
 process countReads {
-    publishDir "counts/${LibraryID}/${SampleID}", pattern: '{*.detailed.txt}'
+    publishDir "${outputDir}/counts/${LibraryID}/${SampleID}", pattern: '{*.detailed.txt}'
     errorStrategy 'ignore'
 
     // Hungry for memory, so I give more, tries 3 times, gives us afterwards
@@ -351,7 +351,7 @@ countedBundle
 * Merge count tables per sample into 1 count table
 *----------------------------------------------------------------------------*/
 process mergeCounts {
-    publishDir "countTables", pattern: '{*Combined.csv}'
+    publishDir "${outputDir}/countTables", pattern: '{*Combined.csv}'
 
     input:
         path inputForR from fileForR
