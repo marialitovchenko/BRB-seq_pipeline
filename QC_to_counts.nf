@@ -105,27 +105,33 @@ logGenomesFiles
     .set{logGenomesFiles}
 
 log.info """\
-            B R B - s e q   N E X T F L O W   P I P E L I N E    
+         -\033[1;91m   B R B - s e q   N E X T F L O W   P I P E L I N E \033[0m-   
          ================================================================================
+         \033[1;91m Input summary: \033[0m
          Submitted input table          : ${sampleTabPath}
          Expect to find fastq-s in      : ${logFqFiles.toString().replaceAll(/DataflowVariable.value../, '').replaceAll(/..$/, '')}
          Expect to find genomes in      : ${logGenomesFiles.toString().replaceAll(/DataflowVariable.value../, '').replaceAll(/..$/, '')}
          BRBseq tools in                : ${brbseqTools}
          Output folder                  : ${outputDir}
 
+         \033[1;91m Expected output summary:\033[0m
          Upon completion, following folders are going to be created:
-         ${outputDir}/trimmed
-         ${outputDir}/demultiplexed
-         ${outputDir}/mapped
-         ${outputDir}/mapStats
-         ${outputDir}/counts
-         ${outputDir}/countTables
+         ${outputDir}/trimmed	:	folder containing trimmed fastqs
+         ${outputDir}/demultiplexed	:	folder containing demultiplexed fastqs
+         ${outputDir}/mapped	:	folder containing mapped bam files
+         ${outputDir}/mapStats	:	folder containing log files produced by STAR
+         ${outputDir}/counts	:	folder containing counts for individual samples
+         \033[1;91m${outputDir}/countTables\033[0m	:	folder containing final \033[1;91mcount tables\033[0m
 
-         Mapping statistics could be found in: ${mapStatsTab}
+         Mapping statistics could be found in: ${mapStatsTab} and further visualized with
+
+
+	 \033[1;91mImportant note:\033[0m: you may not see some of the samples in the final
+	 count tables due to 0 reads being accosiated to the give barcodes.
 
          ================================================================================
 
-         L E T' S   G O ! ! !    
+         \033[1;91m L E T' S   G O ! ! ! \033[0m    
          """
          .stripIndent()
 
@@ -229,7 +235,7 @@ demultiplexBundle
 process mapWithStar {
     publishDir "${outputDir}/mapped/${LibraryID}/${SampleID}", 
                 pattern: '*.sortedByCoord.out.bam'
-    publishDir "${outputDir}mapStats/${LibraryID}/${SampleID}", 
+    publishDir "${outputDir}/mapStats/${LibraryID}/${SampleID}", 
                 pattern: '*_Log.final.out'
 
     // STAR is hungry for memory, so I give more; tries 3 times, gives us
@@ -357,13 +363,13 @@ countedBundle
 * Merge count tables per sample into 1 count table
 *----------------------------------------------------------------------------*/
 process mergeCounts {
-    publishDir "${outputDir}/countTables", pattern: '{*Combined.csv}'
+    publishDir "${outputDir}/countTables", pattern: '{*Combined*.csv}'
 
     input:
         path inputForR from fileForR
 
     output:
-        path('*Combined.csv') into countTables
+        path('*Combined*.csv') into countTables
 
     shell:
     '''
