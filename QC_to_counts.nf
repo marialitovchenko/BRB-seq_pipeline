@@ -15,6 +15,9 @@ def helpMessage() {
 
     nextflow forTest.nf --inputTab table.csv
 
+    to put the pipeline into background mode:
+    nextflow forTest.nf --inputTab table.csv --FQdir fqDir --genomeDir allGenomes --outputDir theResult -bg
+
     Mandatory arguments:
       --inputTab        Path to the table containing information about input 
                         data. The table should have following columns: RunID,
@@ -43,6 +46,9 @@ def helpMessage() {
                         with fastq files
       --genomeDir       Path to the directory containing STAR indexed genomes
       --outputDir       Path to the output directory
+      -bg               Puts execution of the pipeline into background mode
+      -resume           Resumes execution of the pipeline from the moment it 
+                        was interrupted
       """.stripIndent()
 }
 
@@ -300,12 +306,12 @@ mappingStatsAggr
 *----------------------------------------------------------------------------*/
 process countReads {
     publishDir "${outputDir}/counts/${LibraryID}/${SampleID}", pattern: '{*.detailed.txt}'
-    errorStrategy 'ignore'
 
     // Hungry for memory, so I give more, tries 3 times, gives us afterwards
     memory { 2.GB * task.attempt }
     time { 1.hour * task.attempt }
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+    errorStrategy { task.exitStatus in 1..136 ? 'ignore' }
     maxRetries 3
 
     input:
