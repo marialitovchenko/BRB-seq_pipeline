@@ -66,7 +66,7 @@ params.genomeDir = file('.')
 genomePath = file(params.genomeDir)
 // output folder
 params.outputDir = file('.')
-outputDir = file(params.outputDir)
+outputDir = file(params.outputDir) 
 
 // also should be in tech dir
 brbseqTools="/home/litovche/bin/BRBseqTools.1.5.jar"
@@ -150,10 +150,10 @@ process trimReads {
     shell:
     '''
     # full paths for R1 and R2
-    R1path=$(find !{userDir}!{RunID} -type f | grep !{LibraryID} | \
+    R1path=$(find !{userDir}'/'!{RunID} -type f | grep !{LibraryID} | \
              grep !{SampleID} | grep !{params.R1code} | \
              grep "!{params.fastqExtens}")
-    R2path=$(find !{userDir}!{RunID} -type f | grep !{LibraryID} | \
+    R2path=$(find !{userDir}'/'!{RunID} -type f | grep !{LibraryID} | \
              grep !{SampleID} | grep !{params.R2code} | \
              grep "!{params.fastqExtens}")
     # perform trimming with trim galore
