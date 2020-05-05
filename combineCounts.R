@@ -128,11 +128,11 @@ if (is.na(infoTabPath)) {
                    'A mode should be one of "reads" or "UMI"')
       stop(msg)
     } else {
-      if (is.na(outputPath)) {
-        outputPath <- paste0(mode, '.csv')
+      if (is.na(outputPref)) {
+        outputPref <- ''
         msg <- paste('[WARNING] in combineCounts.R:',
-                     "Output path wasn't submitted, will output into",
-                     outputPath)
+                     "Output prefix wasn't submitted,",
+                     "name clash is possible!"))
         warning(msg)
       }
     }
