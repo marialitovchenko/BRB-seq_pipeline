@@ -132,7 +132,7 @@ if (is.na(infoTabPath)) {
         outputPref <- ''
         msg <- paste('[WARNING] in combineCounts.R:',
                      "Output prefix wasn't submitted,",
-                     "name clash is possible!"))
+                     "name clash is possible!")
         warning(msg)
       }
     }
