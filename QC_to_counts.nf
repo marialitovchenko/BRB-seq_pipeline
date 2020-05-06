@@ -44,8 +44,18 @@ def helpMessage() {
     interface
       \033[1;91m--FQdir\033[0m           Path to the directory containing folders (one per run) 
                         with fastq files
-      \033[1;91m--genomeDir\033[0m       Path to the directory containing STAR indexed genomes
+      \033[1;91m--genomeDir\033[0m       Path to the directory containing all your genome 
+                        versions for all your species. For example, a valid 
+                        genome directory TestGenomeDir would contain two 
+                        folders names mus_musculus and homo_sapiens. 
+                        Consequently, homo_sapiens folder would contain 
+                        GRCh37.75 and GRCh38.99, and mus_musculus would contain
+                        GRCm38.68 and GRCm38.98. \033[93m Please use then homo_sapiens 
+                        or mus_musculus in a Specie column of your input table,
+                        and use GRCh37.75/GRCh38.99/GRCm38.68/GRCm38.98 in a 
+                        Genome column.\033[0m
       \033[1;91m--outputDir\033[0m       Path to the output directory
+      \033[1;91m--help\033[0m       Displays this message
       \033[1;91m-bg\033[0m               Puts execution of the pipeline into background mode
       \033[1;91m-resume\033[0m           Resumes execution of the pipeline from the moment it 
                         was interrupted
@@ -74,13 +84,12 @@ genomePath = file(params.genomeDir)
 // output folder
 params.outputDir = file('.')
 outputDir = file(params.outputDir) 
+mapStatsTab = outputDir + "/mapStatsTab.csv"
 
 // also should be in tech dir
-brbseqTools="/home/litovche/bin/BRBseqTools.1.5.jar"
-numbOfProc = 4
+combineCountsInR = techDir + "combineCounts.R"
 
-rInputTab="/home/litovche/Desktop/BRB-seq_pipeline/rInputTab.csv"
-mapStatsTab = outputDir + "/mapStatsTab.csv"
+numbOfProc = 4
 
 
 /* ----------------------------------------------------------------------------
@@ -111,7 +120,7 @@ log.info """\
          Submitted input table          : ${sampleTabPath}
          Expect to find fastq-s in      : ${logFqFiles.toString().replaceAll(/DataflowVariable.value../, '').replaceAll(/..$/, '')}
          Expect to find genomes in      : ${logGenomesFiles.toString().replaceAll(/DataflowVariable.value../, '').replaceAll(/..$/, '')}
-         BRBseq tools in                : ${brbseqTools}
+         BRBseq tools in                : ${params.brbseqTools}
          Output folder                  : ${outputDir}
 
          \033[1;91m Expected output summary:\033[0m
@@ -208,9 +217,9 @@ process demultiplex {
 
     shell:
     '''
-    java -jar !{brbseqTools} Demultiplex -r1 !{trimmedR1} -r2 !{trimmedR2} \
-                               -c !{params.barcodefile} -o "." \
-                               !{params.brbseqTools_commonParams}
+    java -jar !{params.brbseqTools} Demultiplex -r1 !{trimmedR1} \
+              -r2 !{trimmedR2} -c !{params.barcodefile} -o "." \
+              !{params.brbseqTools_commonParams}
     '''
 }
 
@@ -333,7 +342,7 @@ process countReads {
     shell:
     '''
     gtfPath=`find !{genomePath} | grep .gtf$`
-    java -jar -Xmx2g !{brbseqTools} CreateDGEMatrix -f !{trimmedR1} \
+    java -jar -Xmx2g !{params.brbseqTools} CreateDGEMatrix -f !{trimmedR1} \
          -b !{mappedBam} -c !{params.barcodefile} -o "." \
          -gtf $gtfPath !{params.brbseqTools_commonParams}
    
@@ -357,7 +366,7 @@ countedBundle
         item[8].toString() + ' ' + item[9].toString() + ' ' +
         item[10].toString() + ' ' + item[11].toString()
     }
-    .collectFile(name: rInputTab, newLine: true)
+    .collectFile(name: params.rInputTab, newLine: true)
     .set{fileForR}
 
 /* ----------------------------------------------------------------------------
@@ -374,7 +383,10 @@ process mergeCounts {
 
     shell:
     '''
-    Rscript --vanilla /home/litovche/Desktop/BRB-seq_pipeline/combineCounts.R !{inputForR} reads readsCombined
-    Rscript --vanilla /home/litovche/Desktop/BRB-seq_pipeline/combineCounts.R !{inputForR} UMI umiCombined
+    Rscript --vanilla !{params.combineCountsInR} !{inputForR} \
+                      reads readsCombined
+    Rscript --vanilla !{params.combineCountsInR} !{inputForR} \
+                      UMI umiCombined
+    rm !{inputForR} 
     '''
 }
