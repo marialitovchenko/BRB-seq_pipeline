@@ -2,6 +2,8 @@
 
 def helpMessage() {
 
+    def helpMessage() {
+
     log.info """
     -      \033[41m B R B - s e q   N E X T F L O W   P I P E L I N E v1.0\033[0m-
     ================================================================================
@@ -9,55 +11,65 @@ def helpMessage() {
 
     Usage:
     The \033[1;91mtypical\033[0m command for running the pipeline is as follows:
-    nextflow forTest.nf \033[1;91m--inputTab\033[0m table.csv \033[1;91m--FQdir\033[0m fqDir \033[1;91m--genomeDir\033[0m allGenomes \033[1;91m--outputDir\033[0m theResult
+    nextflow forTest.nf \033[1;91m--inputTab\033[0m table.csv \\
+                        \033[1;91m--FQdir\033[0m fqDir \\
+                        \033[1;91m--genomeDir\033[0m allGenomes \\
+                        \033[1;91m--outputDir\033[0m theResult
 
     or
 
     nextflow forTest.nf --inputTab table.csv
 
     to put the pipeline into \033[1;91mbackground\033[0m mode:
-    nextflow forTest.nf \033[1;91m--inputTab\033[0m table.csv \033[1;91m--FQdir\033[0m fqDir \033[1;91m--genomeDir\033[0m allGenomes \033[1;91m--outputDir\033[0m theResult \033[1;91m-bg\033[0m
+    nextflow forTest.nf \033[1;91m--inputTab\033[0m table.csv \\
+                        \033[1;91m--FQdir\033[0m fqDir \\
+                        \033[1;91m--genomeDir\033[0m allGenomes \\
+                        \033[1;91m--outputDir\033[0m theResult \\
+                        \033[1;91m-bg\033[0m \\
+                        \033[1;91m-N\033[0m your.email@gmail.com
 
     \033[1;91mMandatory\033[0m arguments:
-      \033[1;91m--inputTab\033[0m        Path to the table containing information about input 
+      \033[1;91m--inputTab\033[0m        Path to the table containing information about input
                         data. The table should have following columns: RunID,
                         (i.e. NXT0540), LibraryID (i.e. nxid12916), SampleID
                         (i.e. BRBseq_v3_plate_1_S25), Specie (i.e. Hsapiens),
                         Genome (i.e. hg38). Specie and Genome indicate to which
                         genome version of which specie sample should be aligned
-                        to.  
+                        to.
 
-                        If no FQdir is provided (see below), the system will 
-                        assume that input fastq files are located in 
-                        [current dir]/RunID/LibraryID. 
+                        If no FQdir is provided (see below), the system will
+                        assume that input fastq files are located in
+                        [current dir]/RunID/LibraryID.
 
-                        If no genomeDir is provided (see below), the system 
+                        If no genomeDir is provided (see below), the system
                         will that STAR indexed genome is located in
                         [current dir]/Specie/Genome
 
-                        If no outputDir is provided (see below), the system 
+                        If no outputDir is provided (see below), the system
                         will output files in the current directory
 
     
     \033[1;91mOptional\033[0m arguments:
     This arguments are not going to be needed with use of graphical user
     interface
-      \033[1;91m--FQdir\033[0m           Path to the directory containing folders (one per run) 
+      \033[1;91m--FQdir\033[0m           Path to the directory containing folders (one per run)
                         with fastq files
-      \033[1;91m--genomeDir\033[0m       Path to the directory containing all your genome 
-                        versions for all your species. For example, a valid 
-                        genome directory TestGenomeDir would contain two 
-                        folders names mus_musculus and homo_sapiens. 
-                        Consequently, homo_sapiens folder would contain 
+      \033[1;91m--genomeDir\033[0m       Path to the directory containing all your genome
+                        versions for all your species. For example, a valid
+                        genome directory TestGenomeDir would contain two
+                        folders names mus_musculus and homo_sapiens.
+                        Consequently, homo_sapiens folder would contain
                         GRCh37.75 and GRCh38.99, and mus_musculus would contain
-                        GRCm38.68 and GRCm38.98. \033[93m Please use then homo_sapiens 
+                        GRCm38.68 and GRCm38.98. \033[93m Please use then homo_sapiens
                         or mus_musculus in a Specie column of your input table,
-                        and use GRCh37.75/GRCh38.99/GRCm38.68/GRCm38.98 in a 
+                        and use GRCh37.75/GRCh38.99/GRCm38.68/GRCm38.98 in a
                         Genome column.\033[0m
       \033[1;91m--outputDir\033[0m       Path to the output directory
-      \033[1;91m--help\033[0m       Displays this message
+      \033[1;91m--help\033[0m            Displays this message
       \033[1;91m-bg\033[0m               Puts execution of the pipeline into background mode
-      \033[1;91m-resume\033[0m           Resumes execution of the pipeline from the moment it 
+      \033[1;91m-N\033[0m                email adress in order to get notified upon pipeline complition.
+                                                    Do not use epfl email address, because emails can't pass firewall. Use gmail.
+      \033[1;91m-resume\033[0m           Resumes execution of the pipeline from the moment it
                         was interrupted
       """.stripIndent()
 
@@ -160,7 +172,8 @@ sampleTabCh
 * Trim reads by quality and adapterss with trimgalore
 *----------------------------------------------------------------------------*/
 process trimReads {
-    publishDir "${outputDir}/trimmed", pattern: '*_val_*.fq.gz' 
+    publishDir "${outputDir}/trimmed",  mode: 'copy', pattern: '*_val_*.fq.gz',
+               overwrite: true
 
     input:
     tuple RunID, LibraryID, SampleID, Specie, Genome from sampleTab
@@ -205,7 +218,8 @@ process trimReads {
 * Demultiplex reads
 *----------------------------------------------------------------------------*/
 process demultiplex {
-    publishDir "${outputDir}/demultiplexed/${LibraryID}/${SampleID}", pattern: '*.fastq.gz'
+    publishDir "${outputDir}/demultiplexed/${LibraryID}/${SampleID}",
+                mode: 'copy', pattern: '*.fastq.gz', overwrite: true
 
     input:
     tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, 
@@ -244,9 +258,11 @@ demultiplexBundle
 *----------------------------------------------------------------------------*/
 process mapWithStar {
     publishDir "${outputDir}/mapped/${LibraryID}/${SampleID}", 
-                pattern: '*.sortedByCoord.out.bam'
+               mode: 'copy', pattern: '*.sortedByCoord.out.bam',
+               overwrite: true
     publishDir "${outputDir}/mapStats/${LibraryID}/${SampleID}", 
-                pattern: '*_Log.final.out'
+                mode: 'copy', pattern: '*_Log.final.out',
+                overwrite: true
 
     // STAR is hungry for memory, so I give more; tries 3 times, gives us
     // afterwards
@@ -269,7 +285,8 @@ process mapWithStar {
     mapPrefName=`basename !{demultiplexfq} | sed 's/[.].*//g'`
     mapPrefName=$mapPrefName"_"
     STAR --runMode alignReads --readFilesIn !{demultiplexfq} \
-         --genomeDir !{genomePath} --outFileNamePrefix $mapPrefName \
+         --genomeDir !{genomePath}'/'!{Specie}'/'!{Genome}'/STAR_Index' \
+         --outFileNamePrefix $mapPrefName \
          !{params.star_allParams}
     '''
 }
@@ -322,7 +339,8 @@ mappingStatsAggr
 * Count reads in demultiplexed trimmed bams
 *----------------------------------------------------------------------------*/
 process countReads {
-    publishDir "${outputDir}/counts/${LibraryID}/${SampleID}", pattern: '{*.detailed.txt}'
+    publishDir "${outputDir}/counts/${LibraryID}/${SampleID}",
+               mode: 'copy', pattern: '{*.detailed.txt}', overwrite: true
 
     // Hungry for memory, so I give more, tries 3 times, gives us afterwards
     memory { 2.GB * task.attempt }
@@ -341,7 +359,7 @@ process countReads {
 
     shell:
     '''
-    gtfPath=`find !{genomePath} | grep .gtf$`
+    gtfPath=`find !{genomePath}'/'!{Specie}'/'!{Genome} | grep .gtf$`
     java -jar -Xmx2g !{params.brbseqTools} CreateDGEMatrix -f !{trimmedR1} \
          -b !{mappedBam} -c !{params.barcodefile} -o "." \
          -gtf $gtfPath !{params.brbseqTools_commonParams}
@@ -373,7 +391,8 @@ countedBundle
 * Merge count tables per sample into 1 count table
 *----------------------------------------------------------------------------*/
 process mergeCounts {
-    publishDir "${outputDir}/countTables", pattern: '{*Combined*.csv}'
+    publishDir "${outputDir}/countTables",  mode: 'copy',
+               pattern: '{*Combined*.csv}', overwrite: true
 
     input:
         path inputForR from fileForR
@@ -389,4 +408,11 @@ process mergeCounts {
                       UMI umiCombined
     rm !{inputForR} 
     '''
+}
+
+// clean up in case of successful completion
+workflow.onComplete {
+    if(workflow.success){
+        file('work').deleteDir()
+    }
 }
