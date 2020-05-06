@@ -64,6 +64,7 @@ def helpMessage() {
 }
 
 // Show help message
+params.help = ''
 if (params.help) {
     helpMessage()
     exit 0
@@ -86,11 +87,12 @@ params.outputDir = file('.')
 outputDir = file(params.outputDir) 
 mapStatsTab = outputDir + "/mapStatsTab.csv"
 
-// also should be in tech dir
-combineCountsInR = techDir + "combineCounts.R"
-
-numbOfProc = 4
-
+// technical directory, contains all support files, like scripts, jars, etc
+params.techDir = 'techDir'
+params.brbseqTools = file(params.techDir + '/BRBseqTools.1.5.jar')
+params.combineCountsInR = file(params.techDir + '/combineCounts.R')
+params.barcodefile = file(params.techDir + '/barcodes_v3.txt')
+params.rInputTab = file(params.techDir +'/rInputTab.csv')
 
 /* ----------------------------------------------------------------------------
 * LOG: inform user about all the inputs
@@ -116,14 +118,14 @@ logGenomesFiles
 log.info """\
          -        \033[1;91m   B R B - s e q   N E X T F L O W   P I P E L I N E \033[0m-   
          ================================================================================
-         \033[1;91m Input summary: \033[0m
+         \033[1;91mInput summary: \033[0m
          Submitted input table          : ${sampleTabPath}
          Expect to find fastq-s in      : ${logFqFiles.toString().replaceAll(/DataflowVariable.value../, '').replaceAll(/..$/, '')}
          Expect to find genomes in      : ${logGenomesFiles.toString().replaceAll(/DataflowVariable.value../, '').replaceAll(/..$/, '')}
          BRBseq tools in                : ${params.brbseqTools}
          Output folder                  : ${outputDir}
 
-         \033[1;91m Expected output summary:\033[0m
+         \033[1;91mExpected output summary:\033[0m
          Upon completion, following folders are going to be created:
          ${outputDir}/trimmed	:	folder containing trimmed fastqs
          ${outputDir}/demultiplexed	:	folder containing demultiplexed fastqs
