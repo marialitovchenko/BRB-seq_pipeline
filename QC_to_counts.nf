@@ -132,10 +132,8 @@ log.info """\
          ${outputDir}/mapped	:	folder containing mapped bam files
          ${outputDir}/mapStats	:	folder containing log files produced by STAR
          ${outputDir}/counts	:	folder containing counts for individual samples
-         \033[1;91m${outputDir}/countTables\033[0m	:	folder containing \033[1;91mfinal count tables\033[0m
-
-         Mapping statistics could be found in: ${mapStatsTab} 
-         and further visualized with
+         \033[1;93m${outputDir}/countTables\033[0m	:	folder containing \033[1;93mfinal count tables\033[0m
+         \033[1;93m${mapStatsTab}\033[0m  : a \033[1;93mfile with mapping statistics\033[0m and further visualized with \033[1;93m BLA \033[0m
 
 
          \033[1;91mImportant note:\033[0m: you may not see some of the samples in the final
