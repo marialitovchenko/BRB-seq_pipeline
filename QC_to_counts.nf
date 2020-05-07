@@ -2,8 +2,6 @@
 
 def helpMessage() {
 
-    def helpMessage() {
-
     log.info """
     -      \033[41m B R B - s e q   N E X T F L O W   P I P E L I N E v1.0\033[0m-
     ================================================================================
@@ -72,7 +70,6 @@ def helpMessage() {
       \033[1;91m-resume\033[0m           Resumes execution of the pipeline from the moment it
                         was interrupted
       """.stripIndent()
-
 }
 
 // Show help message
