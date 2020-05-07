@@ -1,0 +1,18 @@
+{% extends "userHome/base.html" %}
+
+{% block content %}
+	<h1> User home! </h1>
+
+	{% for project in projects %}
+		 <article class="media content-section">
+		  <div class="media-body">
+		    <div class="article-metadata">
+		      <a class="mr-2" href="#">{{ project.author }}</a>
+		      <small class="text-muted">{{ project.date_created|date:"d F, Y"}}</small>
+		    </div>
+		    <h2><a class="article-title" href="#">{{ project.name }}</a></h2>
+		    <p class="article-content">{{ project.description }}</p>
+		  </div>
+		</article>
+	{% endfor %}
+{% endblock content %}
