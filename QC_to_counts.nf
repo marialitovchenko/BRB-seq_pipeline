@@ -142,7 +142,7 @@ log.info """\
          ${outputDir}/mapStats	:	folder containing log files produced by STAR
          ${outputDir}/counts	:	folder containing counts for individual samples
          \033[1;93m${outputDir}/countTables\033[0m	:	folder containing \033[1;93mfinal count tables\033[0m
-         \033[1;93m${mapStatsTab}\033[0m  : a \033[1;93mfile with mapping statistics\033[0m and further visualized with \033[1;93mBLA\033[0m
+         \033[1;93m${mapStatsTab}\033[0m  : a \033[1;93mfile with mapping statistics\033[0m and further visualized with \033[1;93mplotMapStats.R\033[0m
 
 
          \033[1;91mImportant note:\033[0m: you may not see some of the samples in the final
@@ -169,6 +169,8 @@ sampleTabCh
 * Trim reads by quality and adapterss with trimgalore
 *----------------------------------------------------------------------------*/
 process trimReads {
+    label 'low_memory'
+
     publishDir "${outputDir}/trimmed",  mode: 'copy', pattern: '*_val_*.fq.gz',
                overwrite: true
 
@@ -215,6 +217,8 @@ process trimReads {
 * Demultiplex reads
 *----------------------------------------------------------------------------*/
 process demultiplex {
+    label 'mid_memory'
+
     publishDir "${outputDir}/demultiplexed/${LibraryID}/${SampleID}",
                 mode: 'copy', pattern: '*.fastq.gz', overwrite: true
 
@@ -254,19 +258,14 @@ demultiplexBundle
 * Map demultiplexed reads to reference genome with STAR
 *----------------------------------------------------------------------------*/
 process mapWithStar {
+    label 'high_memory'
+
     publishDir "${outputDir}/mapped/${LibraryID}/${SampleID}", 
                mode: 'copy', pattern: '*.sortedByCoord.out.bam',
                overwrite: true
     publishDir "${outputDir}/mapStats/${LibraryID}/${SampleID}", 
                 mode: 'copy', pattern: '*_Log.final.out',
                 overwrite: true
-
-    // STAR is hungry for memory, so I give more; tries 3 times, gives us
-    // afterwards
-    memory { 2.GB * task.attempt }
-    time { 1.hour * task.attempt }
-    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
-    maxRetries 3
 
     input:
     tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, trimmedR2,
@@ -283,6 +282,7 @@ process mapWithStar {
     mapPrefName=$mapPrefName"_"
     STAR --runMode alignReads --readFilesIn !{demultiplexfq} \
          --genomeDir !{genomePath}'/'!{Specie}'/'!{Genome}'/STAR_Index' \
+         --runThreadN !{task.cpus} \
          --outFileNamePrefix $mapPrefName \
          !{params.star_allParams}
     '''
@@ -300,6 +300,8 @@ mappedBundle.into{ mappedForStats; mappedForCounts }
 * taken from STAR
 *----------------------------------------------------------------------------*/
 process aggregateMapStats {
+    label 'low_memory'
+
     input:
     tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, trimmedR2,
           demultiplexfq, mappedBam, mappedLog from mappedForStats
@@ -336,14 +338,10 @@ mappingStatsAggr
 * Count reads in demultiplexed trimmed bams
 *----------------------------------------------------------------------------*/
 process countReads {
+    label 'high_memory'
+
     publishDir "${outputDir}/counts/${LibraryID}/${SampleID}",
                mode: 'copy', pattern: '{*.detailed.txt}', overwrite: true
-
-    // Hungry for memory, so I give more, tries 3 times, gives us afterwards
-    memory { 2.GB * task.attempt }
-    time { 1.hour * task.attempt }
-    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'ignore' }
-    maxRetries 3
 
     input:
     tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, trimmedR2,
@@ -388,6 +386,8 @@ countedBundle
 * Merge count tables per sample into 1 count table
 *----------------------------------------------------------------------------*/
 process mergeCounts {
+    label 'mid_memory'
+
     publishDir "${outputDir}/countTables",  mode: 'copy',
                pattern: '{*Combined*.csv}', overwrite: true
 
