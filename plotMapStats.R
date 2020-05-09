@@ -322,34 +322,50 @@ server <- function(input, output, session) {
   })
   
   observe({
+    # all unique run-library-sample combinations
+    allSampsAllRuns <- mapData()[, .(RunID, LibraryID, SubSample)]
+    allSampsAllRuns <- allSampsAllRuns[!duplicated(allSampsAllRuns)]
+    
+    # get selected run
     runSel <- input$runsToDisplay
+    # select libraries and subsamples in those runs and update selectors
+    libsInRun <- unique(allSampsAllRuns[RunID %in% runSel]$LibraryID)
+    updateSelectInput(session, inputId = 'libsToDisplay',
+                      choices = sort(libsInRun), selected = libsInRun)
+    sampsInRun <- unique(allSampsAllRuns[RunID %in% runSel]$SubSample)
+    updateSelectInput(session, inputId = 'samplesToDisplay',
+                      choices = c('All', sort(sampsInRun)),
+                      selected = 'All')
+  })
+  
+  observe({
+    # get selected libraries and update subsample selector
+    runSel <- input$runsToDisplay
+    libSel <- input$libsToDisplay
     
-    # select libraries in those runs
-    libsInRun <- mapData()[, .(RunID, LibraryID)]
-    libsInRun <- libsInRun[!duplicated(libsInRun)]
-    libsInRun <- libsInRun[RunID %in% runSel]
-    # select samples in those runs
-    sampsInRun <- mapData()[, .(RunID, SubSample)]
-    sampsInRun <- sampsInRun[!duplicated(sampsInRun)]
-    sampsInRun <- sampsInRun[RunID %in% runSel]
-    
+    # all unique run-library-sample combinations
+    allSampsAllRuns <- mapData()[, .(RunID, LibraryID, SubSample)]
+    allSampsAllRuns <- allSampsAllRuns[!duplicated(allSampsAllRuns)]
+
+    sampsInLib <- allSampsAllRuns[RunID %in% runSel][LibraryID %in% libSel]
+    sampsInLib <- unique(sampsInLib$SubSample)
+    updateSelectInput(session, inputId = 'samplesToDisplay',
+                      choices = c('All', sort(sampsInLib)),
+                      selected = 'All')
+  })
+  
+  observe({
+    # get selected sample
+    sampSel <- input$samplesToDisplay
+
     # table output
     selectedDT <- mapData()
     selectedDT <- selectedDT[RunID %in% input$runsToDisplay &
                              LibraryID %in% input$libsToDisplay]
-    #if (identical(input$samplesToDisplay, 'All')) {
-    #  selectedDT <- selectedDT
-    #} else {
-    #  selectedDT <- selectedDT[SubSample %in% input$samplesToDisplay]
-    #}
+    if (!identical(sampSel, 'All')) {
+      selectedDT <- selectedDT[SubSample %in% sampSel]
+    }
     output$table <- renderTable({selectedDT})
-    
-    updateSelectInput(session, inputId = 'libsToDisplay',
-                      choices = libsInRun$LibraryID, 
-                      selected = libsInRun$LibraryID)
-    updateSelectInput(session, inputId = 'samplesToDisplay',
-                      choices = c('All', sort(sampsInRun$SubSample)),
-                      selected = 'All')
   })
   
   # table download
@@ -359,8 +375,11 @@ server <- function(input, output, session) {
     content = function(file) {
       fieldSep = switch(input$tabSepar, "Tab" = '\t', 
                         "Space" = ' ',"Comma" = ',')
-      write.table(mapData()[RunID %in% input$runsToDisplay], 
-                  file, append = F, quote = F, sep = fieldSep, 
+      dataToWrite <- mapData()
+      dataToWrite <- dataToWrite[RunID %in% input$runsToDisplay]
+      dataToWrite <- dataToWrite[LibraryID %in% input$libsToDisplay]
+      dataToWrite <- dataToWrite[SubSample %in% input$samplesToDisplay]
+      write.table(dataToWrite, file, append = F, quote = F, sep = fieldSep,
                   row.names = F, col.names = T)
     })
   
