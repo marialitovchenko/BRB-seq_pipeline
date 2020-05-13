@@ -4,7 +4,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import (ListView, 
 	DetailView, 
 	CreateView,
-	UpdateView)
+	UpdateView,
+	DeleteView)
 from .models import Project
 
 def home(request):
@@ -37,6 +38,16 @@ class ProjectUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 	def form_valid(self, form):
 		form.instance.author = self.request.user
 		return super().form_valid(form)
+
+	def test_func(self):
+		project = self.get_object()
+		if self.request.user == project.author :
+			return True
+		return False
+
+class ProjectDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+	model = Project
+	success_url = '/userHome/userHome'
 
 	def test_func(self):
 		project = self.get_object()
