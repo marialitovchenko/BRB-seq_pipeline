@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.http import HttpResponse
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import (ListView, 
 	DetailView, 
 	CreateView)
@@ -20,9 +21,13 @@ class ProjectListView(ListView):
 class ProjectDetailView(DetailView):
 	model = Project
 
-class ProjectCreateView(CreateView):
+class ProjectCreateView(LoginRequiredMixin, CreateView):
 	model = Project
 	fields = ['name', 'description']
+
+	def form_valid(self, form):
+		form.instance.author = self.request.user
+		return super().form_valid(form)
 
 def tutorial(request):
     return render(request, 'userHome/tutorial.html', {'title': 'Test title'})
