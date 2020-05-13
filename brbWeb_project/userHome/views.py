@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from django.http import HttpResponse
-from django.views.generic import ListView, DetailView
+from django.views.generic import (ListView, 
+	DetailView, 
+	CreateView)
 from .models import Project
 
 def home(request):
@@ -17,6 +19,10 @@ class ProjectListView(ListView):
 
 class ProjectDetailView(DetailView):
 	model = Project
+
+class ProjectCreateView(CreateView):
+	model = Project
+	fields = ['name', 'description']
 
 def tutorial(request):
     return render(request, 'userHome/tutorial.html', {'title': 'Test title'})
