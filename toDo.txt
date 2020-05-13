@@ -12,3 +12,4 @@ put proper adapter sequences to cut adapt, they are only in R2
 
 in the R script, give all parameters for the run at the end
 
+add UMI and UMI - barcode pattern to the table

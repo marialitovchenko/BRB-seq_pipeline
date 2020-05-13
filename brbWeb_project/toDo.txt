@@ -1,0 +1,4 @@
+harmonize names, i.e. in userHome/views.py
+model = Project
+context_object_name = 'projects'
+
