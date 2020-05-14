@@ -2,18 +2,20 @@
 
 {% block content %}
 	<h1> User home! </h1>
-
+	<a class="btn btn-secondary btn-sm mt-1 mb-1" href="{% url 'project-create' %}"> New project </a>
 	{% for project in projects %}
-		 <article class="media content-section">
-          <img class="rounded-circle article-img" src={{ project.author.profile.image.url }}>
-			<div class="media-body">
-			    <div class="article-metadata">
-			      	<a class="mr-2" href="#">{{ project.author }}</a>
-			      	<small class="text-muted">{{ project.date_created|date:"d F, Y"}}</small>
-			    </div>
-			    <h2><a class="article-title" href="{% url 'project-detail' project.id %}">{{ project.name }}</a></h2>
-			    <p class="article-content">{{ project.description }}</p>
-			</div>
-		</article>
+		{% if project.author  == user %}
+		 	<article class="media content-section">
+          	<img class="rounded-circle article-img" src={{ project.author.profile.image.url }}>
+				<div class="media-body">
+			   		<div class="article-metadata">
+			      		<a class="mr-2" href="#">{{ project.author }}</a>
+			      		<small class="text-muted">{{ project.date_created|date:"d F, Y"}}</small>
+			    	</div>
+			    	<h2><a class="article-title" href="{% url 'project-detail' project.id %}">{{ project.name }}</a></h2>
+			    	<p class="article-content">{{ project.description }}</p>
+				</div>
+			</article>
+		{% endif %}
 	{% endfor %}
 {% endblock content %}
