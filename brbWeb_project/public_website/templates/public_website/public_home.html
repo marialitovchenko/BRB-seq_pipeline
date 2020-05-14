@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+	<title>Alithea Genomics</title>
+	<meta content="" name="descriptison">
+	<meta content="" name="keywords">
+
+	<!-- Google Fonts -->
+	<link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Raleway:300,300i,400,400i,500,500i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+	<!-- Vendor CSS Files -->
+	<link rel="stylesheet" type="text/css" href="{% static 'public_website/bootstrap.min.css' %}">
+	<link rel="stylesheet" type="text/css" href="{% static 'public_website/icofont.min.css' %}">
+	<link rel="stylesheet" type="text/css" href="{% static 'public_website/boxicons.min.css' %}">
+	<link rel="stylesheet" type="text/css" href="{% static 'public_website/owl.carousel.min.css' %}">
+	<link rel="stylesheet" type="text/css" href="{% static 'public_website/venobox.css' %}">
+	<link rel="stylesheet" type="text/css" href="{% static 'public_website/aos.css' %}">
+
+	<!-- Template Main CSS File -->
+	<link rel="stylesheet" type="text/css" href="{% static 'public_website/style.css' %}">
+
+</head>
+
+<body>
+
+  <!-- ======= Header ======= -->
+	<header id="header" class="fixed-top">
+		<div class="container d-flex">
+			<div class="logo mr-auto">
+				<h1 class="text-light"><a href="{% url 'public_home' %}">Alithea Genomics</a></h1>
+			</div>
+
+			<nav class="nav-menu d-none d-lg-block">
+				<ul>
+					<li class="active"><a href="{% url 'public_home' %}">Home</a></li>
+					<li><a href="#about">About Us</a></li>
+					<li><a href="#services">Services</a></li>
+					<li><a href="#portfolio">Scientific basis</a></li>
+					<li><a href="#team">Team</a></li>
+          			<li><a href="#contact">Contact Us</a></li>
+
+          			
+	          		{% if user.is_authenticated %}
+	          			<li><a href="{% url 'Profile' %}">Profile</a>
+						<li><a href="{% url 'Log out' %}">Log out</a>
+				    {% else %}
+				        <li><a href="{% url 'Log in' %}">Log in</a>
+				        <li><a href="{% url 'Register' %}">Register</a>
+				    {% endif %}
+        		</ul>
+      		</nav>
+
+		</div>
+	</header>
+
+</body>

@@ -16,6 +16,7 @@ urlpatterns = [
          name = 'Log out'),
     path('profile/', user_view.profile, name = 'Profile'),
     path('userHome/', include('userHome.urls')),
+    path('', include('public_website.urls')),
 ]
 
 if settings.DEBUG: 
