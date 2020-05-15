@@ -2,37 +2,6 @@
 
 {% block content %}
 	<h1> User home! </h1>
-
-	<div class="container">
-    <div class="row">
-        <div class="col-lg-12">
-                <div class="table">
-                <table class="table">
-                    <tr>
-                        <th>ID</th>
-                        <th>Author</th>
-                        <th>Name</th>
-                        <th>Date created</th>
-                        <th>Date updated</th>
-                        <th>Description</th>
-        			</tr>
-        			{% for project in projects %}
-        				{% if project.author  == user %}
-                        	<tr>
-                           		<td >{{ project.id }}</td>
-                           		<td >{{ project.author }}</td>
-                           		<td class="editable" data-id="{{ project.id }}" data-type="name">{{ project.name }}</td>
-                           		<td class="editable" data-id="{{ project.id }}" data-type="date_created">{{ project.date_created }}</td>
-                           		<td class="editable" data-id="{{ project.id }}" data-type="date_updated">{{ project.date_updated }}</td>
-                           		<td class="editable" data-id="{{ project.id }}" data-type="description">{{ project.description }}</td>
-                        	</tr>
-                        {% endif %}
-                    {% endfor %}
-                </table>
-            	</div>
-         </div>
-     </div>
- </div>
 	<a class="btn btn-secondary btn-sm mt-1 mb-1" href="{% url 'project-create' %}"> New project </a>
 	{% for project in projects %}
 		{% if project.author  == user %}
