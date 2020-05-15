@@ -168,12 +168,15 @@ listOfPlotsMapStats <- function(dataTabWide, idCols, runIDsToPlot,
   for (oneRunInd in 1:length(unique(dataToPlot$RunID))) {
     oneRun <- unique(dataToPlot$RunID)[oneRunInd]
     oneRunTD <- dataToPlot[RunID == oneRun]
-    oneRunTD <- sortForPlot(oneRunTD, sortPlotBy)
-    oneRunTD <- oneRunTD[variable != 'total reads']
-    
-    oneRunPlot <- createBasePlot(oneRunTD, displayModeToPlot, sortPlotBy, 
-                                 colorPallete)
-    allRunsPlotList[[length(allRunsPlotList) + 1]] <- oneRunPlot
+    for (oneLibInd in 1:length(unique(oneRunTD$LibraryID))) {
+      oneLib <- unique(oneRunTD$LibraryID)[oneLibInd]
+      oneRunOneLibTD <- oneRunTD[LibraryID == oneLib]
+      oneRunOneLibTD <- sortForPlot(oneRunOneLibTD, sortPlotBy)
+      oneRunOneLibTD <- oneRunOneLibTD[variable != 'total reads']
+      oneRunPlot <- createBasePlot(oneRunOneLibTD, displayModeToPlot,
+                                   sortPlotBy, colorPallete)
+      allRunsPlotList[[length(allRunsPlotList) + 1]] <- oneRunPlot
+    }
   }
   
   # return list of plots because stupid multiplot doesn't want to save it in
@@ -400,6 +403,11 @@ server <- function(input, output, session) {
                     } else {
                       selectedDT <- selectedDT[SubSample %in% input$samplesToDisplay]
                     }
+                    # calculate labels
+                    plotLabels <- selectedDT[, .(RunID, LibraryID)]
+                    plotLabels <- plotLabels[!duplicated(plotLabels), ]
+                    plotLabels <- paste(plotLabels$RunID, plotLabels$LibraryID,
+                                        sep = ': ')
                     # make plots
                     ggarrange(plotlist = listOfPlotsMapStats(selectedDT,
                                                              idColNames,
@@ -407,9 +415,11 @@ server <- function(input, output, session) {
                                                              'Raw values', 
                                                              input$rawSortBy,
                                                              colorCode),
-                              labels = input$runsToDisplay, common.legend = T,
+                              labels = plotLabels, 
+                              common.legend = T,
                               legend = 'bottom', 
-                              ncol = length(input$runsToDisplay))},
+                              nrow = length(input$runsToDisplay),
+                              ncol = length(input$libsToDisplay))},
                     width = rawPlotWidth, height = rawPlotHeight)
   output$rawDown <- downloadHandler(
                     filename =  function() {paste(input$rawPlotName,
@@ -423,16 +433,21 @@ server <- function(input, output, session) {
                                 pdf(file, width = input$rawPlotW / 72, 
                                     height = input$rawPlotH / 72)
                               }
+                      plotLabels <- selectedDT[, .(RunID, LibraryID)]
+                      plotLabels <- plotLabels[!duplicated(plotLabels), ]
+                      plotLabels <- paste(plotLabels$RunID, plotLabels$LibraryID,
+                                          sep = ': ')
                       print(ggarrange(plotlist = listOfPlotsMapStats(mapData(),
                                                                      idColNames,
                                                                      input$runsToDisplay,
                                                                      'Raw values', 
                                                                      input$rawSortBy,
                                                                      colorCode),
-                                      labels = input$runsToDisplay, 
+                                      labels = plotLabels, 
                                       common.legend = T,
                                       legend = 'bottom', 
-                                      ncol = length(input$runsToDisplay)))
+                                      nrow = length(input$runsToDisplay),
+                                      ncol = length(input$libsToDisplay)))
                       dev.off()}) 
   
   # Tab with percentage plot
@@ -447,15 +462,20 @@ server <- function(input, output, session) {
                         selectedDT <- selectedDT[SubSample %in% input$samplesToDisplay]
                      }
                      # make plots
+                     plotLabels <- selectedDT[, .(RunID, LibraryID)]
+                     plotLabels <- plotLabels[!duplicated(plotLabels), ]
+                     plotLabels <- paste(plotLabels$RunID, plotLabels$LibraryID,
+                                         sep = ': ')
                      ggarrange(plotlist = listOfPlotsMapStats(selectedDT,
                                                               idColNames,
                                                               input$runsToDisplay,
                                                               'Percentage', 
                                                               input$percSortBy,
                                                               colorCode),
-                               labels = input$runsToDisplay, common.legend = T,
+                               labels = plotLabels, common.legend = T,
                                legend = 'bottom', 
-                               ncol = length(input$runsToDisplay))},
+                               nrow = length(input$runsToDisplay),
+                               ncol = length(input$libsToDisplay))},
                      width = percPlotWidth, height = percPlotHeight)
   output$percDown <- downloadHandler(
                      filename = function() {paste(input$percPlotName, 
@@ -469,16 +489,21 @@ server <- function(input, output, session) {
                                  pdf(file, width = input$percPlotW / 72,
                                      height = input$percPlotH / 72)
                                }
+                       plotLabels <- selectedDT[, .(RunID, LibraryID)]
+                       plotLabels <- plotLabels[!duplicated(plotLabels), ]
+                       plotLabels <- paste(plotLabels$RunID, plotLabels$LibraryID,
+                                           sep = ': ')
                       print(ggarrange(plotlist = listOfPlotsMapStats(mapData(),
                                                                      idColNames,
                                                                      input$runsToDisplay,
                                                                      'Percentage', 
                                                                      input$percSortBy,
                                                                      colorCode),
-                                       labels = input$runsToDisplay, 
+                                       labels = plotLabels, 
                                        common.legend = T,
                                        legend = 'bottom', 
-                                       ncol = length(input$runsToDisplay)))
+                                       nrow = length(input$runsToDisplay),
+                                       ncol = length(input$libsToDisplay)))
                        dev.off()}) 
 }
 
