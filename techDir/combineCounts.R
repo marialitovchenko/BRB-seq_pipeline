@@ -156,7 +156,7 @@ for (run in unique(infoTab$Run)) {
   for (lib in unique(infoTab[Run == run]$Library)) {
     sampsInLibRun <- infoTab[Run == run & Library == lib]
     mergedTab <- switch(mode, 
-                        "reads" = mergeCountsInto1Tab(sampsInLibRun$Counts_UMI),
+                        "reads" = mergeCountsInto1Tab(sampsInLibRun$Counts_Reads),
                         "UMI" = mergeCountsInto1Tab(sampsInLibRun$Counts_UMI))
     write.table(mergedTab, paste0(outputPref, '_', run, '_', lib, '.csv'),
                 append = F, quote = F, sep = '\t', row.names = F, col.names = T)
