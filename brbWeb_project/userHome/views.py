@@ -6,7 +6,7 @@ from django.views.generic import (ListView,
 	CreateView,
 	UpdateView,
 	DeleteView)
-from .models import Project
+from .models import Project, SeqLibrary
 
 def home(request):
 	context = {
@@ -30,7 +30,8 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
 
 	def form_valid(self, form):
 		form.instance.author = self.request.user
-		return super().form_valid(form)
+		render(request, 'SeqLibrary-create', context)
+		#return super().form_valid(form)
 
 class ProjectUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 	model = Project
@@ -55,6 +56,14 @@ class ProjectDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
 		if self.request.user == project.author :
 			return True
 		return False
+
+class SeqLibraryCreateView(LoginRequiredMixin, CreateView):
+	model = SeqLibrary
+	fields = ['RunID', 'LibraryID', 'SampleID', 'Specie']
+
+	def form_valid(self, form):
+		form.instance.author = self.request.project
+		return super().form_valid(form)
 
 def tutorial(request):
     return render(request, 'userHome/tutorial.html', {'title': 'Test title'})

@@ -13,3 +13,6 @@ put proper adapter sequences to cut adapt, they are only in R2
 in the R script, give all parameters for the run at the end
 
 add UMI and UMI - barcode pattern to the table
+count tables are slow
+better grid (carousel) for plots?
+column sort in final table puts GeneId in the middle

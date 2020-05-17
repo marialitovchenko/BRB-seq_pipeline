@@ -15,3 +15,27 @@ class Project(models.Model):
 
 	def get_absolute_url(self):
 		return reverse('project-detail', kwargs = {'pk': self.pk})
+
+class SeqLibrary(models.Model):
+	project = models.ForeignKey('self', null = True, on_delete = models.CASCADE)
+	RunID = models.CharField(max_length = 100)
+	LibraryID = models.CharField(max_length = 100)
+	SampleID = models.CharField(max_length = 100)
+	specieChoices = [ ('H.sapiens', 'H.sapiens'),
+	('M.musculus', 'M.musculus'),
+	('D.melanogaster', 'D.melanogaster')]
+	Specie = models.CharField(max_length = 20, choices = specieChoices, 
+		default = 'H.sapiens',)
+	genomeChoices = [
+    ('H.sapiens', (
+            ('vinyl', 'Vinyl'),
+            ('cd', 'CD'),
+        )
+    ),
+    ('M.musculus', (
+            ('vhs', 'VHS Tape'),
+            ('dvd', 'DVD'),
+        )
+    ),
+    ('unknown', 'Unknown'),
+	]
