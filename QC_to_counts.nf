@@ -348,9 +348,10 @@ process countReads {
           demultiplexfq, mappedBam, mappedLog from mappedForCounts
 
     output:
-    tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, trimmedR2,
-          demultiplexfq, mappedBam, mappedLog, path('*.umis.detailed.txt'), 
-          path('*.reads.detailed.txt') into countedBundle
+    tuple RunID, LibraryID, SampleID, Genome, 
+          path('*.reads.detailed.txt') into readBundle
+    tuple RunID, LibraryID, SampleID, Genome,
+          path('*.umis.detailed.txt') into umiBundle
 
     shell:
     '''
@@ -368,43 +369,145 @@ process countReads {
 }
 
 /* ----------------------------------------------------------------------------
-* Output paths to files in the table for R
+* Merge count tables per sample into 1 count table: reads
 *----------------------------------------------------------------------------*/
-countedBundle
-    .flatMap { item ->
-        item[0].toString() + ' ' + item[1].toString() + ' ' +
-        item[2].toString() + ' ' + item[3].toString() + ' ' +
-        item[4].toString() + ' ' + item[5].toString() + ' ' +
-        item[6].toString() + ' ' + item[7].toString() + ' ' +
-        item[8].toString() + ' ' + item[9].toString() + ' ' +
-        item[10].toString() + ' ' + item[11].toString()
-    }
-    .collectFile(name: params.rInputTab, newLine: true)
-    .set{fileForR}
+readBundle
+     .groupTuple(by: [0, 1, 2, 3])
+     .set{readBundleMerged}
+
+process mergeReadCounts {
+   label 'mid_memory'
+   publishDir "${outputDir}/countTables",  mode: 'copy',
+               pattern: '{*readsCombined.csv}', overwrite: true
+
+   input: 
+   tuple RunID, LibraryID, SampleID, Genome, Reads from readBundleMerged
+
+   output:
+   file '*readsCombined.csv' into finalReadsTabs
+
+   shell:
+   '''
+   function getIndexOfSubSample {
+       # first of all, extract SubSample name, i.e. A01, B12, C05, etc
+       fileName=`echo $1 | sed 's@.*/@@g'`
+       # I would simply replace everything after ".", but nextflow doesn't like
+       # backslash, which is used as escape character in bash
+       IFS='.' read -ra SubSample <<< "$fileName"
+       SubSample=${SubSample[0]}
+       if [[ "${SubSample}" == "undetermined" ]]
+       then
+           SubSample="Unknown_Barcode"
+       fi
+       
+       # determine in which column counts for our subsample are
+       fileHeader=`grep $SubSample $1 | tr '\t' ','`
+       # split so it's an array
+       IFS=',' read -ra fileHeader <<< "$fileHeader"
+       # determine the index
+       for i in "${!fileHeader[@]}"; do
+          if [[ "${fileHeader[$i]}" == "${SubSample}" ]]; then
+              subSampleIndex=`echo "${i}"`;
+          fi
+      done
+      subSampleIndex=$((subSampleIndex + 1))
+      echo $subSampleIndex
+   }
+   
+   # output file
+   outputCombinedTable=`echo !{RunID} "_" !{LibraryID} "_" !{Genome} "_" !{SampleID} "_readsCombined.csv"`
+   outputCombinedTable=`echo $outputCombinedTable | sed 's@ @@g'`
+
+   # loop over all individual count files, extract column corresponding to 
+   # a sample and paste it to the output file
+   for oneFile in !{Reads}
+   do
+      oneFile=`echo $oneFile | sed "s/[^t]$//" | sed "s@^[^/]@@g"`
+
+      subSampleInd=`getIndexOfSubSample $oneFile`
+      if test -f "$outputCombinedTable"
+      then
+        subSampleColumnFile=`echo $subSampleInd ".txt" | sed 's@ @@g' `
+        cut -f $subSampleInd $oneFile > $subSampleColumnFile
+        paste -d' ' $outputCombinedTable $subSampleColumnFile > tmp.txt
+        rm $subSampleColumnFile
+        mv tmp.txt $outputCombinedTable
+      else
+        cut -f 1,2,$subSampleInd $oneFile > $outputCombinedTable
+      fi
+   done
+   '''
+}
 
 /* ----------------------------------------------------------------------------
-* Merge count tables per sample into 1 count table
+* Merge count tables per sample into 1 count table: UMIs
 *----------------------------------------------------------------------------*/
-process mergeCounts {
-    label 'mid_memory'
+umiBundle
+     .groupTuple(by: [0, 1, 2, 3])
+     .set{umiBundleMerged}
 
-    publishDir "${outputDir}/countTables",  mode: 'copy',
-               pattern: '{*Combined*.csv}', overwrite: true
+process mergeUMICounts {
+   label 'mid_memory'
+   publishDir "${outputDir}/countTables",  mode: 'copy',
+               pattern: '{*umisCombined.csv}', overwrite: true
 
-    input:
-        path inputForR from fileForR
+   input: 
+   tuple RunID, LibraryID, SampleID, Genome, UMIs from umiBundleMerged
 
-    output:
-        path('*Combined*.csv') into countTables
+   output:
+   file '*umisCombined.csv' into finalUMIsTabs
 
-    shell:
-    '''
-    Rscript --vanilla !{params.combineCountsInR} !{inputForR} \
-                      reads readsCombined
-    Rscript --vanilla !{params.combineCountsInR} !{inputForR} \
-                      UMI umiCombined
-    rm !{inputForR} 
-    '''
+   shell:
+   '''
+   function getIndexOfSubSample {
+       # first of all, extract SubSample name, i.e. A01, B12, C05, etc
+       fileName=`echo $1 | sed 's@.*/@@g'`
+       # I would simply replace everything after ".", but nextflow doesn't like
+       # backslash, which is used as escape character in bash
+       IFS='.' read -ra SubSample <<< "$fileName"
+       SubSample=${SubSample[0]}
+       if [[ "${SubSample}" == "undetermined" ]]
+       then
+           SubSample="Unknown_Barcode"
+       fi
+       
+       # determine in which column counts for our subsample are
+       fileHeader=`grep $SubSample $1 | tr '\t' ','`
+       # split so it's an array
+       IFS=',' read -ra fileHeader <<< "$fileHeader"
+       # determine the index
+       for i in "${!fileHeader[@]}"; do
+          if [[ "${fileHeader[$i]}" == "${SubSample}" ]]; then
+              subSampleIndex=`echo "${i}"`;
+          fi
+      done
+      subSampleIndex=$((subSampleIndex + 1))
+      echo $subSampleIndex
+   }
+   
+   # output file
+   outputCombinedTable=`echo !{RunID} "_" !{LibraryID} "_" !{Genome} "_" !{SampleID} "_umisCombined.csv"`
+   outputCombinedTable=`echo $outputCombinedTable | sed 's@ @@g'`
+
+   # loop over all individual count files, extract column corresponding to 
+   # a sample and paste it to the output file
+   for oneFile in !{UMIs}
+   do
+      oneFile=`echo $oneFile | sed "s/[^t]$//" | sed "s@^[^/]@@g"`
+
+      subSampleInd=`getIndexOfSubSample $oneFile`
+      if test -f "$outputCombinedTable"
+      then
+        subSampleColumnFile=`echo $subSampleInd ".txt" | sed 's@ @@g' `
+        cut -f $subSampleInd $oneFile > $subSampleColumnFile
+        paste -d' ' $outputCombinedTable $subSampleColumnFile > tmp.txt
+        rm $subSampleColumnFile
+        mv tmp.txt $outputCombinedTable
+      else
+        cut -f 1,2,$subSampleInd $oneFile > $outputCombinedTable
+      fi
+   done
+   '''
 }
 
 // clean up in case of successful completion
