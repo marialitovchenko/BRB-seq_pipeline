@@ -429,7 +429,7 @@ process mergeReadCounts {
       then
         subSampleColumnFile=`echo $subSampleInd ".txt" | sed 's@ @@g' `
         cut -f $subSampleInd $oneFile > $subSampleColumnFile
-        paste -d' ' $outputCombinedTable $subSampleColumnFile > tmp.txt
+        paste -d'\t' $outputCombinedTable $subSampleColumnFile > tmp.txt
         rm $subSampleColumnFile
         mv tmp.txt $outputCombinedTable
       else
@@ -500,7 +500,7 @@ process mergeUMICounts {
       then
         subSampleColumnFile=`echo $subSampleInd ".txt" | sed 's@ @@g' `
         cut -f $subSampleInd $oneFile > $subSampleColumnFile
-        paste -d' ' $outputCombinedTable $subSampleColumnFile > tmp.txt
+        paste -d'\t' $outputCombinedTable $subSampleColumnFile > tmp.txt
         rm $subSampleColumnFile
         mv tmp.txt $outputCombinedTable
       else
