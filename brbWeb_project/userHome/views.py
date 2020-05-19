@@ -6,6 +6,8 @@ from django.views.generic import (ListView,
 	CreateView,
 	UpdateView,
 	DeleteView)
+from django_datatables_view.base_datatable_view import BaseDatatableView
+from django.utils.html import escape
 from .models import Project, SeqLibrary
 
 def home(request):

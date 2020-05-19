@@ -16,6 +16,28 @@
 		    </div>
 		    <h2 class="article-title">{{ object.name }}</h2>
 		    <p class="article-content">{{ object.description }}</p>
+
+		    <div class="table">
+                <table class="table">
+                    <tr>
+                    	<th>Project</th>
+                        <th>Run ID</th>
+                        <th>Library ID</th>
+                        <th>Sample name</th>
+                        <th>Specie</th>
+                        <th>Genome version</th>
+                    </tr>
+                    {% for seqLib in object.seqData.all %}
+                        <tr>
+                            <td >{{ object.id }}</td>
+                            <td class="editable" data-id="{{ object.id }}" data-type="RunID">{{ seqLib.RunID }}</td>
+                            <td class="editable" data-id="{{ object.id }}" data-type="LibraryID">{{ seqLib.LibraryID }}</td>
+                            <td class="editable" data-id="{{ object.id }}" data-type="SampleID">{{ student.SampleID }}</td>
+                            <td class="editable" data-id="{{ object.id }}" data-type="Specie">{{ student.Specie }}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+                </div>
 		</div>
 	</article>
 {% endblock content %}

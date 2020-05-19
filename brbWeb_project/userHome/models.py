@@ -17,7 +17,8 @@ class Project(models.Model):
 		return reverse('project-detail', kwargs = {'pk': self.pk})
 
 class SeqLibrary(models.Model):
-	project = models.ForeignKey('self', null = True, on_delete = models.CASCADE)
+	project = models.ForeignKey(Project, related_name = 'seqData', null = True,
+		on_delete = models.CASCADE)
 	RunID = models.CharField(max_length = 100)
 	LibraryID = models.CharField(max_length = 100)
 	SampleID = models.CharField(max_length = 100)
@@ -39,3 +40,6 @@ class SeqLibrary(models.Model):
     ),
     ('unknown', 'Unknown'),
 	]
+
+	def __str__ (self):
+		return self.RunID
