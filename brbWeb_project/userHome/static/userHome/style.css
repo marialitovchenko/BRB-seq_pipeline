@@ -1,0 +1,126 @@
+/* https://coolors.co/41d3bd-1f2041-4b3f72-ffc857-407899 */
+/*--------------------------------------------------------------
+# HEADER - BRBseq soft
+--------------------------------------------------------------*/
+#header {
+  height: 72px;
+  transition: all 0.5s;
+  z-index: 997;
+  transition: all 0.5s;
+  padding: 15px 0;
+  background: #1F2041;
+}
+
+#header .logo h1 {
+  text-transform: uppercase;
+  font-size: 24px;
+  padding: 6px 0;
+  font-weight: 550;
+}
+
+#header .logo h1 a, #header .logo h1 a:hover {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+/*--------------------------------------------------------------
+# NAVIGATION BAR
+--------------------------------------------------------------*/
+.nav-menu > ul > li {
+  list-style-type: none;
+  float: left;
+  margin-left: 30px;
+}
+
+.nav-menu a, .nav-menu a:hover {
+  display: block;
+  position: relative;
+  color: #ffffff;
+  padding: 8px 0 12px 0;
+  transition: 0.3s;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.nav-menu > ul > li {
+  position: relative;
+}
+
+.nav-menu > ul > li > a:before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  bottom: 3px;
+  left: 0;
+  background-color: #41D3BD;
+  visibility: hidden;
+  width: 0px;
+  transition: all 0.3s ease-in-out 0s;
+}
+
+.nav-menu a:hover:before, .nav-menu li:hover > a:before, .nav-menu .active > a:before {
+  visibility: visible;
+  width: 100%;
+}
+
+/* Drop-down of navigation bar with registration */
+.nav-menu .drop-down ul {
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 99;
+  opacity: 0;
+  visibility: hidden;
+  padding: 10px 0;
+  background: #1F2041;
+  box-shadow: 0px 0px 30px rgba(127, 137, 161, 0.25);
+  transition: ease all 0.3s;
+  list-style-type: none;
+}
+
+.nav-menu .drop-down:hover > ul {
+  opacity: 1;
+  visibility: visible;
+}
+
+.nav-menu .drop-down li {
+  min-width: 180px;
+}
+
+.nav-menu .drop-down ul a {
+  padding: 10px 20px;
+}
+
+.nav-menu .drop-down ul a:hover, .nav-menu .drop-down ul .active > a, .nav-menu .drop-down ul li:hover > a {
+  color: #1bac91;
+}
+
+/*--------------------------------------------------------------
+# user interface
+--------------------------------------------------------------*/
+#UI {
+  width: 100%;
+  height: calc(100vh - 72px);
+  margin-top: 72px;
+  padding: 0;
+  background: #FFFFFF;
+}
+
+#UI h1 {
+  margin: 100px 0 10px 0;
+  font-size: 30px;
+}
+
+#UI .btn-new-project {
+  float: left;
+  text-transform: uppercase;
+  font-size: 16px;
+  display: inline-block;
+  padding: 8px 28px;
+  border-radius: 4px;
+  transition: 0.5s;
+  border: 2px solid #41D3BD;
+  color: #41D3BD;
+}
