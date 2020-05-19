@@ -2,25 +2,38 @@
 
 {% block content %}
 	<h1> Overview of your projects: </h1>
-	<a class="btn btn-new-project" href="{% url 'project-create' %}"> New project </a>
+	<a class="btn btn-new-project shadow mb-5" href="{% url 'project-create' %}"> New project </a>
 
-	{% for project in projects %}
-		{% if project.author  == user %}
-		 	<article class="media content-section">
-          	<img class="rounded-circle article-img" src={{ project.author.profile.image.url }}>
-				<div class="media-body">
-			   		<div class="article-metadata">
-			      		<a class="mr-2" href="#">{{ project.author }}</a>
-			      		<small class="text-muted">{{ project.date_created|date:"d F, Y"}}</small>
-			    	</div>
-			    	<h2><a class="article-title" href="{% url 'project-detail' project.id %}">{{ project.name }}</a></h2>
-			    	<p class="article-content">{{ project.description }}</p>
-				</div>
-			</article>
-		{% endif %}
-	{% endfor %}
+	<div class="container">                 
+		<div class="table-responsive table-hover table-condensed shadow">          
+  			<table class="table">
+    			<thead class="thead-light">
+      				<tr>
+        				<th>ID</th>
+        				<th>Name</th>
+        				<th>Description</th>
+        				<th>Created</th>
+        				<th>Completed</th>
+      				</tr>
+    			</thead>
+    			{% for project in projects %}
+					{% if project.author  == user %}
+    					<tbody>
+      						<tr>
+        						<td>{{ project.id }}</td>
+        						<td>{{ project.name }}</td>
+        						<td>{{ project.description }}</td>
+        						<td>{{ project.date_created|date:"d F, Y"}}</td>
+        						<td></td>
+      						</tr>
+    					</tbody>
+    				{% endif %}
+				{% endfor %}
+  			</table>
+  		</div>
+	</div>
 
-	{% if is_paginated %}
+	<!--- {% if is_paginated %}
 
 		{% if page_obj.has_previous %}
 			<a class="btn btn-outline-info mb4" href="?page=1">1</a>		
@@ -40,5 +53,5 @@
 			<a class="btn btn-outline-info mb4" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
 		{% endif%}
 
-	{% endif %}
+	{% endif %} -->
 {% endblock content %}

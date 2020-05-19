@@ -21,7 +21,7 @@ class ProjectListView(ListView):
 	template_name = 'userHome/home.html'
 	context_object_name = 'projects'
 	ordering = ['-date_created']
-	paginate_by = 5
+	#paginate_by = 5
 
 class ProjectDetailView(DetailView):
 	model = Project
