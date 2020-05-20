@@ -5,7 +5,7 @@
 	<a class="btn btn-new-project shadow mb-5" href="{% url 'project-create' %}"> New project </a>
 
 	<div class="container">                 
-		<div class="table-responsive table-hover table-condensed shadow">          
+		<div class="project-table table-responsive table-hover table-condensed shadow">          
   			<table class="table">
     			<thead class="thead-light">
       				<tr>
@@ -21,7 +21,7 @@
     					<tbody>
       						<tr>
         						<td>{{ project.id }}</td>
-        						<td><a class="update-project shadow" href="{{project.get_absolute_url}}">{{ project.name }}</td>
+        						<td><a class="update-project" href="{{project.get_absolute_url}}">{{ project.name }}</td>
         						<td>{{ project.description }}</td>
         						<td>{{ project.date_created|date:"d F, Y"}}</td>
         						<td></td>
