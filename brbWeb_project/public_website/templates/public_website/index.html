@@ -39,20 +39,20 @@
           			<li><a href="#portfolio">Scientific basis</a></li>
           			<li><a href="#team">Team</a></li>
           			<li><a href="#contact">Contact Us</a></li>
-
-          			<li class="drop-down"><a href="">Software</a>
           			<!-- In case if user logged in, display "log out" and "profile" -->  
           			{% if user.is_authenticated %}
+                  <li class="drop-down"><a href="{% url 'user-home' %}">Software</a>
           				<ul>
-              				<li><a href="{% url 'Profile' %}">Profile</a>
 							        <li><a href="{% url 'Log out' %}">Log out</a>
             			</ul>
+                  </li>
         			{% else %}
+                <li class="drop-down"><a href="">Software</a>
         				<ul>
         			 	      <li><a href="{% url 'Log in' %}">Log in</a>
 				    		      <li><a href="{% url 'Register' %}">Register</a>
-				    	</ul>
-				    </li>
+				    	  </ul>
+				        </li>
 					{% endif %}        	
         	</ul>
      	</nav> <!-- END NAVIGATION BAR -->

@@ -35,24 +35,22 @@
 		<div class="container d-flex">
 
       	<div class="logo mr-auto">
-        	<h1 class="text-light"><a href="#">BRB-seq soft</a></h1>
+        	<h1 class="text-light"><a href="{% url 'index' %}">Alithea Genomics</a> <sup><small><i> - software</i></small></sup>  </h1> 
       	</div>
 
       	<!-- NAVIGATION BAR -->
      	<nav class="nav-menu d-none d-lg-block">
         	<ul>
-          		<li class="active"><a href="{% url 'user-home' %}">Home</a></li> 
+        		<!-- In case if user logged in, display "log out" and "profile" --> 
+        		{% if user.is_authenticated %}
+          			<li class="active"><a href="{% url 'user-home' %}">Home</a></li> 
           			<li><a href="{% url 'user-tutorial' %}">Tutorial</a></li>
-          			<li><a href="#services">FAQ</a></li>
-          			<!-- In case if user logged in, display "log out" and "profile" -->  
-          			{% if user.is_authenticated %}
-          				<li><a href="{% url 'Profile' %}">Profile</a></li>
-						<li><a href="{% url 'Log out' %}">Log out</a></li>
-        			{% else %}
-        			 	<li><a href="{% url 'Log in' %}">Log in</a></li>
-				    	<li><a href="{% url 'Register' %}">Register</a></li>
-				    </li>
-					{% endif %}        	
+          			<li><a href="{% url 'Profile' %}">Profile</a></li>
+					<li><a href="{% url 'Log out' %}">Log out</a></li>
+				{% else %}
+					<li class="active"><a href="{% url 'Log in' %}">Log in</a></li>
+				    <li><a href="{% url 'Register' %}">Register</a></li>
+          		{% endif %}        	
         	</ul>
      	</nav> <!-- END NAVIGATION BAR -->
     	</div>
