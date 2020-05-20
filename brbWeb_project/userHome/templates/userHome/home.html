@@ -21,7 +21,7 @@
     					<tbody>
       						<tr>
         						<td>{{ project.id }}</td>
-        						<td>{{ project.name }}</td>
+        						<td><a class="update-project shadow" href="{{project.get_absolute_url}}">{{ project.name }}</td>
         						<td>{{ project.description }}</td>
         						<td>{{ project.date_created|date:"d F, Y"}}</td>
         						<td></td>

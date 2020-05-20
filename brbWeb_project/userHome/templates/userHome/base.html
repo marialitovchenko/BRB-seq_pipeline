@@ -56,14 +56,14 @@
 	
 	<section id="UI" class="flex-column justify-content-center align-items-center">
     <div class="container text-center text-md-left" data-aos="fade-up">
-      {% if messages %}
+    	{% if messages %}
 	      	{% for message in messages %}
 	      	<div class = "alert alert-{{ message.tags }}"> 
 	      		{{ message }}
 	      	</div>
 	      	{% endfor %}
-	      {% endif %}
-	      {% block content %}{% endblock %}
+	    {% endif %}
+		{% block content %}{% endblock %}
     </div>
   </section>
 

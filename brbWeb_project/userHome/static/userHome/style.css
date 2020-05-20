@@ -124,3 +124,14 @@
   border: 2px solid #41D3BD;
   color: #41D3BD;
 }
+
+#UI .update-project {
+  float: left;
+  transition: 0.5s;
+  color: #41D3BD;
+}
+
+#UI .update-project:hover  {
+  color: #FFC857;
+  text-decoration: none;
+}
