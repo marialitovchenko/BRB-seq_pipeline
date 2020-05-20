@@ -18,6 +18,8 @@ urlpatterns = [
         name = 'project-delete'),
     path('project/new/', ProjectCreateView.as_view(), 
         name = 'project-create'),
-    path('project/<int:pk>/SeqLibrary', SeqLibraryCreateView.as_view(), 
-        name = 'SeqLibrary-create')
+    path('project/<int:pk>/newSeqLibrary', SeqLibraryCreateView.as_view(), 
+        name = 'SeqLibrary-create'),
+
+    path('ajax/load-genomes/', views.load_genomes, name='ajax_load_genomes'),
 ]

@@ -1,0 +1,4 @@
+<option value="">---------</option>
+{% for genome in genomes %}
+<option value="{{ genome.pk }}">{{ genome.version }}</option>
+{% endfor %}

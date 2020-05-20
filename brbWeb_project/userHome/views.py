@@ -8,7 +8,8 @@ from django.views.generic import (ListView,
 	DeleteView)
 from django_datatables_view.base_datatable_view import BaseDatatableView
 from django.utils.html import escape
-from .models import Project, SeqLibrary
+from .models import Project, SeqLibrary, Specie, GenomeVersion
+from .forms import SeqLibraryForm
 
 def home(request):
 	context = {
@@ -61,11 +62,16 @@ class ProjectDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
 
 class SeqLibraryCreateView(LoginRequiredMixin, CreateView):
 	model = SeqLibrary
-	fields = ['RunID', 'LibraryID', 'SampleID', 'Specie']
+	form_class = SeqLibraryForm
 
 	def form_valid(self, form):
-		form.instance.author = self.request.project
+		form.instance.project = self.request.project
 		return super().form_valid(form)
+
+def load_genomes(request):
+    specie_id = request.GET.get('specie')
+    genomes = GenomeVersion.objects.filter(specie_id=specie_id).order_by('version')
+    return render(request, 'userHome/genomes_dropdown_form.html', {'genomes': genomes})
 
 def tutorial(request):
     return render(request, 'userHome/tutorial.html', {'title': 'Test title'})

@@ -16,17 +16,33 @@ class Project(models.Model):
 	def get_absolute_url(self):
 		return reverse('project-detail', kwargs = {'pk': self.pk})
 
+class Specie(models.Model):
+	name = models.CharField(max_length = 100)
+
+	def __str__(self):
+		return self.name
+
+class GenomeVersion(models.Model):
+	specie = models.ForeignKey(Specie, max_length = 100, 
+		on_delete = models.CASCADE)
+	version = models.CharField(max_length = 100)
+
+	def __str__ (self):
+		return self.version
+
 class SeqLibrary(models.Model):
 	project = models.ForeignKey(Project, related_name = 'seqData', null = True,
 		on_delete = models.CASCADE)
 	RunID = models.CharField(max_length = 100)
 	LibraryID = models.CharField(max_length = 100)
 	SampleID = models.CharField(max_length = 100)
+	specie = models.ForeignKey(Specie, null = True, on_delete = models.SET_NULL)
+	genome = models.ForeignKey(GenomeVersion, null = True, on_delete = models.SET_NULL)
+
 	specieChoices = [ ('H.sapiens', 'H.sapiens'),
 	('M.musculus', 'M.musculus'),
 	('D.melanogaster', 'D.melanogaster')]
-	Specie = models.CharField(max_length = 20, choices = specieChoices, 
-		default = 'H.sapiens',)
+	
 	genomeChoices = [
     ('H.sapiens', (
             ('vinyl', 'Vinyl'),
@@ -38,7 +54,10 @@ class SeqLibrary(models.Model):
             ('dvd', 'DVD'),
         )
     ),
-    ('unknown', 'Unknown'),
+    ('D.melanogaster', (
+            ('b', 'a'),
+        )
+    ),
 	]
 
 	def __str__ (self):

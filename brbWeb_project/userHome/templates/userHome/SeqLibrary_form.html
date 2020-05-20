@@ -4,15 +4,35 @@
 
 {% block content %}
 	<div class = "content-section">
-		<form method = "POST">
-			{% csrf_token %}
+	  	<form method="POST" id="SeqLibForm" data-genomes-url="{% url 'ajax_load_genomes' %}" novalidate>
+	    	{% csrf_token %}
 			<fieldset class = "form-group">
 				<legend class = "border-bottom mb-4"> Sequencing library </legend>
-				{{ form|crispy  }}
+				<div class="crispyform">
+					{{ form|crispy  }}
+				</div>
 			</fieldset>
 			<div class = "form-group">
 				<button class = "btn btn-outline-info" type = "submit"> Submit</button>
 			</div>
-		</form>
+	  </form>
 	</div>
+
+	<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+	<script>
+    	$("#id_specie").change(function () {
+      	var url = $("#SeqLibForm").attr("data-genomes-url");  // get the url of the `load_genomes` view
+     	var specieId = $(this).val();  // get the selected specie ID from the HTML input
+
+     	$.ajax({                       // initialize an AJAX request
+        	url: url,                    // set the url of the request (= localhost:8000/hr/ajax/load-genomes/)
+        	data: {
+          		'specie': specieId       // add the country id to the GET parameters
+        	},
+        	success: function (data) {   // `data` is the return of the `load_genomes` view function
+          		$("#id_genome").html(data);  // replace the contents of the genomes input with the data that came from the server
+        	}
+      	});
+    	});
+	</script>
 {% endblock content %}
