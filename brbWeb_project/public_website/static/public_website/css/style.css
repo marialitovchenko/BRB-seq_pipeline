@@ -98,9 +98,9 @@
 }
 
 /*--------------------------------------------------------------
-# Hero Section
+# welcome screen
 --------------------------------------------------------------*/
-#hero {
+#welcome {
   width: 100%;
   height: calc(100vh - 72px);
   margin-top: 72px;
@@ -108,7 +108,7 @@
   background: #4B3F72;
 }
 
-#hero h1 {
+#welcome h1 {
   margin: 0 0 10px 0;
   font-size: 48px;
   font-weight: 700;
@@ -116,7 +116,7 @@
   color: #ffffff;
 }
 
-#hero h2 {
+#welcome h2 {
   margin: 0 0 10px 0;
   font-size: 32px;
   font-weight: 300;
@@ -124,7 +124,7 @@
   color: #ffffff;
 }
 
-#hero .btn-get-started {
+#welcome .btn-get-started {
   text-transform: uppercase;
   font-size: 16px;
   display: inline-block;
