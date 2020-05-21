@@ -105,7 +105,8 @@
   height: calc(100vh - 72px);
   margin-top: 72px;
   padding: 0;
-  background: #4B3F72;
+  background: url("../img/welcome_bg.jpg") center center;
+  /*background: #4B3F72;*/
 }
 
 #welcome h1 {
@@ -113,7 +114,7 @@
   font-size: 48px;
   font-weight: 700;
   line-height: 56px;
-  color: #ffffff;
+  color: #4B3F72;
 }
 
 #welcome h2 {
@@ -121,7 +122,7 @@
   font-size: 32px;
   font-weight: 300;
   line-height: 45px;
-  color: #ffffff;
+  color: #4B3F72;
 }
 
 #welcome .btn-get-started {
