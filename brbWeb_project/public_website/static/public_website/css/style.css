@@ -1,6 +1,6 @@
 /* https://coolors.co/41d3bd-1f2041-4b3f72-ffc857-407899 */
 /*--------------------------------------------------------------
-# HEADER - ALITHEA GENOMICS
+ HEADER - ALITHEA GENOMICS
 --------------------------------------------------------------*/
 #header {
   height: 72px;
@@ -24,7 +24,42 @@
 }
 
 /*--------------------------------------------------------------
-# NAVIGATION BAR
+ WEB-SITE WIDE
+--------------------------------------------------------------*/
+h1, h2, h3, h4, h5 {
+  font-family: "Helvetica";
+  color: #1F2041;
+}
+
+h1 {
+  font-size: 48px;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 39px;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 30px;
+  font-weight: 400;
+}
+
+h4 {
+  font-size: 20px;
+  font-weight: 300;
+}
+
+p {
+  font-size: 18px;
+  font-weight: 300;
+  color: #1F2041;
+}
+
+
+/*--------------------------------------------------------------
+ NAVIGATION BAR
 --------------------------------------------------------------*/
 .nav-menu > ul > li {
   list-style-type: none;
@@ -203,7 +238,7 @@
 }
 
 /*--------------------------------------------------------------
- welcome screen
+WELCOME SCREEN
 --------------------------------------------------------------*/
 #welcome {
   width: 100%;
@@ -216,18 +251,12 @@
 
 #welcome h1 {
   margin: 0 0 10px 0;
-  font-size: 48px;
-  font-weight: 700;
   line-height: 56px;
-  color: #1F2041;
 }
 
 #welcome h2 {
   margin: 0 0 10px 0;
-  font-size: 32px;
-  font-weight: 300;
   line-height: 45px;
-  color: #1F2041;
 }
 
 #welcome .btn-get-started {
@@ -241,20 +270,11 @@
   color: #41D3BD;
 }
 
-/*
-
-*/
-#about h3 {
-  font-weight: 300;
-  font-size: 30px;
-  color: #1F2041;
-}
-
+/*--------------------------------------------------------------
+ ABOUT US
+--------------------------------------------------------------*/
 #about .icon-box h4 {
-  font-size: 20px;
-  font-weight: 300;
   margin-left: 60px;
-  color: #1F2041;
 }
 
 #about .icon-box p {
@@ -264,12 +284,19 @@
   margin-left: 60px;
 }
 
-#about .icon-box {
-  margin-top: 44px;
-}
-
 #about .icon-box i {
   font-size: 48px;
   float: left;
   color: #41D3BD;
+}
+
+#about .icon-box {
+  margin-top: 44px;
+}
+
+/*--------------------------------------------------------------
+ TEAM
+--------------------------------------------------------------*/
+#team h3{
+  text-align: center;
 }
