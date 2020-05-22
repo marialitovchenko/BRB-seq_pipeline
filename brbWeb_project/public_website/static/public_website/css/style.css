@@ -448,6 +448,7 @@ p, span {
   padding: 30px;
   width: 80%;
   background: #fff;
+  margin-bottom: 20px;
 }
 
 #contact .info i {
@@ -465,12 +466,10 @@ p, span {
 
 #contact .info h4 {
   padding: 0 0 0 60px;
-  margin-bottom: 5px;
 }
 
 #contact .info p {
   padding: 0 0 0 60px;
-  margin-bottom: 0;
 }
 
 #contact .info .email p {
