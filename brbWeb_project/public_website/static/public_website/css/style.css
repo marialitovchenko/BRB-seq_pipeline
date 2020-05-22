@@ -4,17 +4,19 @@
 --------------------------------------------------------------*/
 h1, h2, h3, h4, h5 {
   font-family: "Helvetica";
-  color: #1F2041;
+  color: #000000;
 }
 
 h1 {
   font-size: 48px;
-  font-weight: 700;
+  font-weight: 700;  
+  color: #1a535c;
 }
 
 h2 {
   font-size: 39px;
   font-weight: 400;
+  color: #1a535c;
 }
 
 h3 {
@@ -31,7 +33,6 @@ h4 {
 p, span {
   font-size: 18px;
   font-weight: 300;
-  color: #1F2041;
 }
 
 /*--------------------------------------------------------------
@@ -43,7 +44,7 @@ p, span {
   z-index: 997;
   transition: all 0.5s;
   padding: 15px 0;
-  background: #1F2041;
+  background: #1a535c;
 }
 
 #header .logo h1 {
@@ -88,7 +89,7 @@ p, span {
   height: 2px;
   bottom: 3px;
   left: 0;
-  background-color: #41D3BD;
+  background-color: #ee6c4d;
   visibility: hidden;
   width: 0px;
   transition: all 0.3s ease-in-out 0s;
@@ -109,7 +110,7 @@ p, span {
   opacity: 0;
   visibility: hidden;
   padding: 10px 0;
-  background: #1F2041;
+  background: #1a535c;
   box-shadow: 0px 0px 30px rgba(127, 137, 161, 0.25);
   transition: ease all 0.3s;
   list-style-type: none;
@@ -158,7 +159,7 @@ p, span {
   left: 15px;
   z-index: 9999;
   overflow-y: auto;
-  background: #1F2041;
+  background: #1a535c;
   transition: ease-in-out 0.2s;
   opacity: 0;
   visibility: hidden;
@@ -182,7 +183,7 @@ p, span {
 }
 
 .mobile-nav a:hover, .mobile-nav .active > a, .mobile-nav li:hover > a {
-  color: #41D3BD;
+  color: #ee6c4d;
   text-decoration: none;
 }
 
@@ -265,8 +266,8 @@ p, span {
   padding: 8px 28px;
   border-radius: 4px;
   transition: 0.5s;
-  border: 2px solid #41D3BD;
-  color: #41D3BD;
+  border: 2px solid #ee6c4d;
+  color: #ee6c4d;
 }
 
 /*--------------------------------------------------------------
@@ -283,14 +284,14 @@ p, span {
 #about .icon-box p {
   font-size: 16px;
   font-weight: 300;
-  color: #1F2041;
+  color: #1a535c;
   margin-left: 60px;
 }
 
 #about .icon-box i {
   font-size: 48px;
   float: left;
-  color: #41D3BD;
+  color: #ee6c4d;
 }
 
 #about .icon-box {
@@ -302,13 +303,14 @@ p, span {
 --------------------------------------------------------------*/
 #services {
   padding: 50px 0 40px 0;
-  background: #e3e3f2;
+  background: #E2D5C1;
 }
 
 #services .service-icon {
   font-size: 48px;
   line-height: 1;
   margin-bottom: 5px;
+  color: #ee6c4d;
 }
 
 .services .service-box {
@@ -331,6 +333,10 @@ p, span {
   border: 0;
 }
 
+#sci_basis h4 {
+  font-weight: 500;
+}
+
 #sci_basis .nav-link {
   border: 0;
   padding: 20px;
@@ -339,7 +345,7 @@ p, span {
 }
 
 #sci_basis .nav-link:hover {
-  color: #1bac91;
+  color: #ee6c4d;
 }
 
 #sci_basis .nav-link.active {
@@ -347,12 +353,33 @@ p, span {
 }
 
 #sci_basis .nav-link.active h4 {
-  color: #1bac91;
+  color: #ee6c4d;
 }
 
 #sci_basis .tab-pane.active {
   -webkit-animation: slide-down 0.5s ease-out;
   animation: slide-down 0.5s ease-out;
+}
+
+/*--------------------------------------------------------------
+ INVESTORS
+--------------------------------------------------------------*/
+#Investors {
+  padding: 50px 0 40px 0;
+  background: #E2D5C1;
+}
+
+#Investors .inverstors-pic {
+  display: flex;
+  flex: 0 0 150px;
+  overflow: hidden;
+  position: relative;
+  width: 250px;
+  margin-bottom: 50px;
+}
+
+#Investors .inverstors-pic img {
+  height: 100%;
 }
 
 /*--------------------------------------------------------------
@@ -393,7 +420,7 @@ p, span {
 }
 
 #team .team-pic-overlay  {
-  background: linear-gradient(0deg, rgba(75,63,114), rgba(65,211,189));
+  background: linear-gradient(0deg, rgba(26,83,92), rgba(238,108,77));
   color: #fafafa;
   font-size: 24px;
 }
@@ -410,37 +437,20 @@ p, span {
 }
 
 /*--------------------------------------------------------------
- INVESTORS
+ Contact
 --------------------------------------------------------------*/
-#Investors {
+#contact {
+  background: #E2D5C1;
   padding: 50px 0 40px 0;
 }
 
-#Investors .inverstors-pic {
-  display: flex;
-  flex: 0 0 150px;
-  overflow: hidden;
-  position: relative;
-  width: 250px;
-  margin-bottom: 50px;
-}
-
-#Investors .inverstors-pic img {
-  height: 100%;
-}
-
-/*--------------------------------------------------------------
- Contact
---------------------------------------------------------------*/
-.contact .info {
+#contact .info {
   padding: 30px;
-  width: 100%;
+  width: 80%;
   background: #fff;
-  box-shadow: 0px 2px 15px rgba(0, 0, 0, 0.1);
 }
 
-.contact .info i {
-  font-size: 20px;
+#contact .info i {
   color: #1bac91;
   float: left;
   width: 44px;
@@ -453,22 +463,17 @@ p, span {
   transition: all 0.3s ease-in-out;
 }
 
-.contact .info h4 {
+#contact .info h4 {
   padding: 0 0 0 60px;
-  font-size: 22px;
-  font-weight: 600;
   margin-bottom: 5px;
-  color: #21413c;
 }
 
-.contact .info p {
+#contact .info p {
   padding: 0 0 0 60px;
   margin-bottom: 0;
-  font-size: 14px;
-  color: #43857a;
 }
 
-.contact .info .email p {
+#contact .info .email p {
   padding-top: 5px;
 }
 
@@ -476,20 +481,10 @@ p, span {
 # Footer
 --------------------------------------------------------------*/
 #footer {
-  background: #1F2041;
+  background: #1a535c;
   padding: 0 0 30px 0;
   color: #FFFFFF;
   font-size: 10px;
-}
-
-#footer .footer-top {
-  background: #1F2041;
-  border-bottom: 1px solid #18302c;
-  padding: 30px 0 30px 0;
-}
-
-#footer .footer-top .footer-info {
-  margin-bottom: 30px;
 }
 
 #footer .copyright {
