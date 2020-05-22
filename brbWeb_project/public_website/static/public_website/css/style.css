@@ -471,3 +471,32 @@ p, span {
 .contact .info .email p {
   padding-top: 5px;
 }
+
+/*--------------------------------------------------------------
+# Footer
+--------------------------------------------------------------*/
+#footer {
+  background: #1F2041;
+  padding: 0 0 30px 0;
+  color: #FFFFFF;
+  font-size: 10px;
+}
+
+#footer .footer-top {
+  background: #1F2041;
+  border-bottom: 1px solid #18302c;
+  padding: 30px 0 30px 0;
+}
+
+#footer .footer-top .footer-info {
+  margin-bottom: 30px;
+}
+
+#footer .copyright {
+  text-align: center;
+}
+
+#footer .credits {
+  text-align: center;
+  color: #FFFFFF;
+}
