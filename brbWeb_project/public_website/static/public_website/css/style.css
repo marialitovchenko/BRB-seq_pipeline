@@ -20,6 +20,7 @@ h2 {
 h3 {
   font-size: 30px;
   font-weight: 400;
+  text-align: center;
 }
 
 h4 {
@@ -297,10 +298,68 @@ p, span {
 }
 
 /*--------------------------------------------------------------
+ SERVICES
+--------------------------------------------------------------*/
+#services {
+  padding: 50px 0 40px 0;
+  background: #e3e3f2;
+}
+
+#services .service-icon {
+  font-size: 48px;
+  line-height: 1;
+  margin-bottom: 5px;
+}
+
+.services .service-box {
+  border-radius: 15px;
+  background: #FFFFFF;
+  padding: 30px;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+
+/*--------------------------------------------------------------
+ SCIENTIFIC BASIS
+--------------------------------------------------------------*/
+#sci_basis {
+  padding: 50px 0 40px 0;
+}
+
+#sci_basis .nav-tabs {
+  border: 0;
+}
+
+#sci_basis .nav-link {
+  border: 0;
+  padding: 20px;
+  transition: 0.3s;
+  color: #21413c;
+}
+
+#sci_basis .nav-link:hover {
+  color: #1bac91;
+}
+
+#sci_basis .nav-link.active {
+  box-shadow: 0px 2px 15px rgba(0, 0, 0, 0.12);
+}
+
+#sci_basis .nav-link.active h4 {
+  color: #1bac91;
+}
+
+#sci_basis .tab-pane.active {
+  -webkit-animation: slide-down 0.5s ease-out;
+  animation: slide-down 0.5s ease-out;
+}
+
+/*--------------------------------------------------------------
  TEAM
 --------------------------------------------------------------*/
-#team h3{
-  text-align: center;
+#team {
+  padding: 50px 0 40px 0;
 }
 
 #team .team-pic {
@@ -312,6 +371,7 @@ p, span {
   overflow: hidden;
   position: relative;
   width: 250px;
+  margin-bottom: 50px;
 }
 
 #team .team-pic img {
@@ -342,9 +402,72 @@ p, span {
   opacity: 1;
 }
 
-#team p {
+#team .in-image {
   font-size: 20px;
   font-weight: 300;
   text-align: center;
   white-space: pre;
+}
+
+/*--------------------------------------------------------------
+ INVESTORS
+--------------------------------------------------------------*/
+#Investors {
+  padding: 50px 0 40px 0;
+}
+
+#Investors .inverstors-pic {
+  display: flex;
+  flex: 0 0 150px;
+  overflow: hidden;
+  position: relative;
+  width: 250px;
+  margin-bottom: 50px;
+}
+
+#Investors .inverstors-pic img {
+  height: 100%;
+}
+
+/*--------------------------------------------------------------
+ Contact
+--------------------------------------------------------------*/
+.contact .info {
+  padding: 30px;
+  width: 100%;
+  background: #fff;
+  box-shadow: 0px 2px 15px rgba(0, 0, 0, 0.1);
+}
+
+.contact .info i {
+  font-size: 20px;
+  color: #1bac91;
+  float: left;
+  width: 44px;
+  height: 44px;
+  background: #e1f0ee;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50px;
+  transition: all 0.3s ease-in-out;
+}
+
+.contact .info h4 {
+  padding: 0 0 0 60px;
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #21413c;
+}
+
+.contact .info p {
+  padding: 0 0 0 60px;
+  margin-bottom: 0;
+  font-size: 14px;
+  color: #43857a;
+}
+
+.contact .info .email p {
+  padding-top: 5px;
 }
