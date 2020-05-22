@@ -1,29 +1,5 @@
 /* https://coolors.co/41d3bd-1f2041-4b3f72-ffc857-407899 */
 /*--------------------------------------------------------------
- HEADER - ALITHEA GENOMICS
---------------------------------------------------------------*/
-#header {
-  height: 72px;
-  transition: all 0.5s;
-  z-index: 997;
-  transition: all 0.5s;
-  padding: 15px 0;
-  background: #1F2041;
-}
-
-#header .logo h1 {
-  text-transform: uppercase;
-  font-size: 24px;
-  padding: 6px 0;
-  font-weight: 550;
-}
-
-#header .logo h1 a, #header .logo h1 a:hover {
-  color: #ffffff;
-  text-decoration: none;
-}
-
-/*--------------------------------------------------------------
  WEB-SITE WIDE
 --------------------------------------------------------------*/
 h1, h2, h3, h4, h5 {
@@ -51,12 +27,35 @@ h4 {
   font-weight: 300;
 }
 
-p {
+p, span {
   font-size: 18px;
   font-weight: 300;
   color: #1F2041;
 }
 
+/*--------------------------------------------------------------
+ HEADER - ALITHEA GENOMICS
+--------------------------------------------------------------*/
+#header {
+  height: 72px;
+  transition: all 0.5s;
+  z-index: 997;
+  transition: all 0.5s;
+  padding: 15px 0;
+  background: #1F2041;
+}
+
+#header .logo h1 {
+  text-transform: uppercase;
+  font-size: 24px;
+  padding: 6px 0;
+  font-weight: 550;
+}
+
+#header .logo h1 a, #header .logo h1 a:hover {
+  color: #ffffff;
+  text-decoration: none;
+}
 
 /*--------------------------------------------------------------
  NAVIGATION BAR
@@ -238,7 +237,7 @@ p {
 }
 
 /*--------------------------------------------------------------
-WELCOME SCREEN
+ WELCOME SCREEN
 --------------------------------------------------------------*/
 #welcome {
   width: 100%;
@@ -246,7 +245,6 @@ WELCOME SCREEN
   margin-top: 72px;
   padding: 0;
   background: url("../img/welcome_bg.jpg") center center;
-  /*background: #4B3F72;*/
 }
 
 #welcome h1 {
@@ -273,6 +271,10 @@ WELCOME SCREEN
 /*--------------------------------------------------------------
  ABOUT US
 --------------------------------------------------------------*/
+#about {
+  padding: 50px 0 40px 0;
+}
+
 #about .icon-box h4 {
   margin-left: 60px;
 }
@@ -299,4 +301,50 @@ WELCOME SCREEN
 --------------------------------------------------------------*/
 #team h3{
   text-align: center;
+}
+
+#team .team-pic {
+  border-radius: 100%;
+  display: flex;
+  flex: 0 0 150px;
+  height: 250px;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  width: 250px;
+}
+
+#team .team-pic img {
+  height: 100%;
+}
+
+#team .team-pic-overlay {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  transition: opacity 0.25s;
+  z-index: 1;
+}
+
+#team .team-pic-overlay  {
+  background: linear-gradient(0deg, rgba(75,63,114), rgba(65,211,189));
+  color: #fafafa;
+  font-size: 24px;
+}
+
+#team .team-pic-overlay:hover {
+  opacity: 1;
+}
+
+#team p {
+  font-size: 20px;
+  font-weight: 300;
+  text-align: center;
+  white-space: pre;
 }
