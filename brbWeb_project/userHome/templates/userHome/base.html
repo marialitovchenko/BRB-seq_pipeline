@@ -5,29 +5,19 @@
 	<meta content="width=device-width, initial-scale=1.0" name="viewport">
 
 	<!-- Tab title -->
-	<title>Alithea Genomics</title>
+	<title>Alithea Genomics - software</title>
 	<meta content="" name="descriptison">
 	<meta content="" name="keywords">
 
-	<!-- Bootstrap JS -->
-  	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-  	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
-
-  	<script src="https://unpkg.com/tableexport.jquery.plugin/tableExport.min.js"></script>
-	<script src="https://unpkg.com/bootstrap-table@1.16.0/dist/bootstrap-table.min.js"></script>
-	<script src="https://unpkg.com/bootstrap-table@1.16.0/dist/bootstrap-table-locale-all.min.js"></script>
-	<script src="https://unpkg.com/bootstrap-table@1.16.0/dist/extensions/export/bootstrap-table-export.min.js"></script>
-
-	<!-- CSS Files -->
-	<link rel="stylesheet" type="text/css" href="{% static 'userHome/style.css' %}">
-	<link rel="stylesheet" type="text/css" href="{% static 'public_website/bootstrap.min.css' %}">
-
-	{% if title %}
-		<title> User if test - {{ title }} </title>
-	{% else %}
-		<title> Simple title </title>
-	{% endif %}
-</head>
+	<!-- CSS -->
+	<!-- Bootstrap -->
+	<link href="{% static 'public_website/css/bootstrap.min.css' %}" rel="stylesheet">
+  	<!-- Animate on scroll -->
+	<link href="{% static 'public_website/css/aos.css' %}" rel="stylesheet">
+ 	<!-- Various icons -->
+  	<link href="{% static 'public_website/css/icofont/icofont.min.css' %}" rel="stylesheet">
+  	<link rel="stylesheet" type="text/css" href="{% static 'userHome/style.css' %}">
+</head>		
 
 <body>
 	<!-- HEADER -->
@@ -69,5 +59,19 @@
 		{% block content %}{% endblock %}
     </div>
   </section>
+
+  <!-- JAVA SCRIPT -->
+  <script src="{% static 'public_website/javascript/jquery/jquery.min.js' %}"></script>
+  <script src="{% static 'public_website/javascript/jquery.easing/jquery.easing.min.js' %}"></script>
+  <!-- Animate on scroll -->
+  <script src="{% static 'public_website/javascript/aos/aos.js' %}"></script>
+  <!-- URL hash navigation -->
+  <script src="{% static 'public_website/javascript/owl.carousel/owl.carousel.min.js' %}"></script>
+  <!-- Bootstrap - list in scientific basis-->
+  <script src="{% static 'public_website/javascript/bootstrap/bootstrap.bundle.min.js' %}"></script>
+
+  <!-- Template Main JS File -->
+  <script src="{% static 'public_website/javascript/main.js' %}"></script>
+
 </body>
 </html>

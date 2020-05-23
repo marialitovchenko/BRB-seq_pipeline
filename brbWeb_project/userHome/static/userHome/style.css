@@ -1,6 +1,41 @@
-/* https://coolors.co/41d3bd-1f2041-4b3f72-ffc857-407899 */
 /*--------------------------------------------------------------
-# HEADER - BRBseq soft
+ WEB-SITE WIDE
+--------------------------------------------------------------*/
+h1, h2, h3, h4, h5 {
+  font-family: "Helvetica";
+  color: #000000;
+}
+
+h1 {
+  font-size: 48px;
+  font-weight: 700;  
+  color: #1a535c;
+}
+
+h2 {
+  font-size: 39px;
+  font-weight: 400;
+  color: #1a535c;
+}
+
+h3 {
+  font-size: 30px;
+  font-weight: 400;
+  text-align: center;
+}
+
+h4 {
+  font-size: 20px;
+  font-weight: 300;
+}
+
+p, span {
+  font-size: 18px;
+  font-weight: 300;
+}
+
+/*--------------------------------------------------------------
+ HEADER - Alithea soft
 --------------------------------------------------------------*/
 #header {
   height: 72px;
@@ -8,7 +43,7 @@
   z-index: 997;
   transition: all 0.5s;
   padding: 15px 0;
-  background: #1F2041;
+  background: #1a535c;
 }
 
 #header .logo h1 {
@@ -23,8 +58,9 @@
   text-decoration: none;
 }
 
+
 /*--------------------------------------------------------------
-# NAVIGATION BAR
+ NAVIGATION BAR
 --------------------------------------------------------------*/
 .nav-menu > ul > li {
   list-style-type: none;
@@ -53,7 +89,7 @@
   height: 2px;
   bottom: 3px;
   left: 0;
-  background-color: #41D3BD;
+  background-color: #ee6c4d;
   visibility: hidden;
   width: 0px;
   transition: all 0.3s ease-in-out 0s;
@@ -64,37 +100,84 @@
   width: 100%;
 }
 
-/* Drop-down of navigation bar with registration */
-.nav-menu .drop-down ul {
-  display: block;
-  position: absolute;
-  left: 0;
-  top: 100%;
-  z-index: 99;
-  opacity: 0;
-  visibility: hidden;
-  padding: 10px 0;
-  background: #1F2041;
-  box-shadow: 0px 0px 30px rgba(127, 137, 161, 0.25);
-  transition: ease all 0.3s;
-  list-style-type: none;
+/* Mobile Navigation */
+/* Mobile Navigation  - three lines button*/
+.mobile-nav-toggle {
+  position: fixed;
+  right: 15px;
+  top: 15px;
+  z-index: 9998;
+  border: 0;
+  background: none;
+  font-size: 24px;
+  transition: all 0.4s;
+  outline: none !important;
+  line-height: 1;
+  cursor: pointer;
+  text-align: right;
+  color: #ffffff;
 }
 
-.nav-menu .drop-down:hover > ul {
+.mobile-nav {
+  position: fixed;
+  top: 55px;
+  right: 15px;
+  bottom: 15px;
+  left: 15px;
+  z-index: 9999;
+  overflow-y: auto;
+  background: #1a535c;
+  transition: ease-in-out 0.2s;
+  opacity: 0;
+  visibility: hidden;
+  border-radius: 10px;
+  padding: 10px 0;
+}
+
+.mobile-nav * {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mobile-nav a {
+  display: block;
+  position: relative;
+  color: #ffffff;
+  padding: 10px 20px;
+  font-weight: 300;
+  outline: none;
+}
+
+.mobile-nav a:hover, .mobile-nav .active > a, .mobile-nav li:hover > a {
+  color: #ee6c4d;
+  text-decoration: none;
+}
+
+.mobile-nav-overly {
+  width: 100%;
+  height: 100%;
+  z-index: 9997;
+  top: 0;
+  left: 0;
+  position: fixed;
+  background: rgba(16, 31, 29, 0.6);
+  overflow: hidden;
+  display: none;
+  transition: ease-in-out 0.2s;
+}
+
+.mobile-nav-active {
+  overflow: hidden;
+}
+
+.mobile-nav-active .mobile-nav {
   opacity: 1;
   visibility: visible;
 }
 
-.nav-menu .drop-down li {
-  min-width: 180px;
-}
-
-.nav-menu .drop-down ul a {
-  padding: 10px 20px;
-}
-
-.nav-menu .drop-down ul a:hover, .nav-menu .drop-down ul .active > a, .nav-menu .drop-down ul li:hover > a {
-  color: #1bac91;
+.mobile-nav-active .mobile-nav-toggle i {
+  color: #fff;
 }
 
 /*--------------------------------------------------------------
