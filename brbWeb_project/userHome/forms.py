@@ -4,8 +4,7 @@ from .models import Project, SeqLibrary, Specie, GenomeVersion
 class SeqLibraryForm(forms.ModelForm):
     class Meta:
         model = SeqLibrary
-        fields = ('project', 'RunID', 'LibraryID', 'SampleID', 'specie', 
-        	'genome')
+        fields = ('RunID', 'LibraryID', 'SampleID', 'specie', 'genome')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.http import HttpResponse
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import (ListView, 
@@ -64,8 +64,12 @@ class SeqLibraryCreateView(LoginRequiredMixin, CreateView):
 	model = SeqLibrary
 	form_class = SeqLibraryForm
 
+	def dispatch(self, request, *args, **kwargs):
+		self.project = get_object_or_404(Project, pk=kwargs['project_pk'])
+		return super().dispatch(request, *args, **kwargs)
+
 	def form_valid(self, form):
-		form.instance.project = self.request.project
+		form.instance.project = self.project
 		return super().form_valid(form)
 
 def load_genomes(request):

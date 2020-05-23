@@ -39,26 +39,8 @@ class SeqLibrary(models.Model):
 	specie = models.ForeignKey(Specie, null = True, on_delete = models.SET_NULL)
 	genome = models.ForeignKey(GenomeVersion, null = True, on_delete = models.SET_NULL)
 
-	specieChoices = [ ('H.sapiens', 'H.sapiens'),
-	('M.musculus', 'M.musculus'),
-	('D.melanogaster', 'D.melanogaster')]
-	
-	genomeChoices = [
-    ('H.sapiens', (
-            ('vinyl', 'Vinyl'),
-            ('cd', 'CD'),
-        )
-    ),
-    ('M.musculus', (
-            ('vhs', 'VHS Tape'),
-            ('dvd', 'DVD'),
-        )
-    ),
-    ('D.melanogaster', (
-            ('b', 'a'),
-        )
-    ),
-	]
-
 	def __str__ (self):
 		return self.RunID
+
+	def get_absolute_url(self):
+		return reverse('project-detail', kwargs = {'pk': self.project.pk})
