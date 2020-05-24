@@ -1,5 +1,7 @@
-from django.shortcuts import get_object_or_404, render
+import csv, io
+from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponse
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import (ListView, 
 	DetailView, 
@@ -76,6 +78,36 @@ def load_genomes(request):
     specie_id = request.GET.get('specie')
     genomes = GenomeVersion.objects.filter(specie_id=specie_id).order_by('version')
     return render(request, 'userHome/genomes_dropdown_form.html', {'genomes': genomes})
+
+def SeqLibrary_upload(request, project_pk):
+	template = "userHome/SeqLibrary_upload.html"
+	promt = {
+		'order' : 'Order of the CSV should be…'
+	}
+
+	if request.method == "GET":
+		return render(request, template, promt)
+
+	csv_file = request.FILES['file']
+
+	if not csv_file.name.endswith('.csv'):
+		messages.error(request, 'This is not a csv file')
+
+	data_set = csv_file.read().decode('UTF-8')
+	io_string = io.StringIO(data_set)
+	next(io_string) # skip the header
+	for column in csv.reader(io_string, delimiter=',', quotechar="|"):
+		_,created = SeqLibrary.objects.update_or_create(
+			project = get_object_or_404(Project, pk=project_pk),
+			RunID = column[0],
+			LibraryID = column[1],
+			SampleID = column[2],
+			specie = get_object_or_404(Specie, name = column[3]),
+			genome = get_object_or_404(GenomeVersion, version = column[4])
+		)
+		
+	context = {}
+	return redirect('project-detail', project_pk)
 
 def tutorial(request):
     return render(request, 'userHome/tutorial.html', {'title': 'Test title'})

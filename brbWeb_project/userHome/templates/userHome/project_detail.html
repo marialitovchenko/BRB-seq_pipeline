@@ -13,7 +13,7 @@
                     <p class="article-content">{{ object.description }}</p>
 
                     <div class="container">  
-                        <h3>Runs in this project: </h3> <a class="btn btn-secondary btn-sm mt-1 mb-1" href="{% url 'SeqLibrary-create' object.id %}"> Add run </a> or <a class="btn btn-danger btn-sm mt-1 mb-1" href="#"> Upload csv </a>  
+                        <h3>Runs in this project: </h3> <a class="btn btn-secondary btn-sm mt-1 mb-1" href="{% url 'SeqLibrary-create' object.id %}"> Add run </a> or <a class="btn btn-danger btn-sm mt-1 mb-1" href="{% url 'SeqLibrary-upload' object.id %}"> Upload csv </a>  
                         <div class="project-table table-responsive table-hover table-condensed shadow">          
                             <table class="table">
                                 <thead class="thead-light">
@@ -24,6 +24,7 @@
                                         <th>Sample name</th>
                                         <th>Specie</th>
                                         <th>Genome version</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                             {% for seqLib in object.seqData.all %}
@@ -33,7 +34,8 @@
                                         <td>{{ seqLib.RunID }}</td>
                                         <td>{{ seqLib.LibraryID }}</td>
                                         <td>{{ seqLib.SampleID }}</td>
-                                        <td>{{ seqLib.Specie }}</td>
+                                        <td>{{ seqLib.specie }}</td>
+                                        <td>{{ seqLib.genome }}</td>
                                         <td><a class="update-project" href="{{project.get_absolute_url}}">{{ project.name }}</td>
                                         </tr>
                                     </tbody>

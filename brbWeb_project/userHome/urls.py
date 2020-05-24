@@ -4,7 +4,8 @@ from .views import (ProjectListView,
 	ProjectCreateView,
 	ProjectUpdateView,
 	ProjectDeleteView,
-    SeqLibraryCreateView)
+    SeqLibraryCreateView,
+    SeqLibrary_upload)
 from . import views
 
 urlpatterns = [
@@ -18,8 +19,11 @@ urlpatterns = [
         name = 'project-delete'),
     path('project/new/', ProjectCreateView.as_view(), 
         name = 'project-create'),
+
     path('project/<int:project_pk>/newSeqLibrary', SeqLibraryCreateView.as_view(), 
         name = 'SeqLibrary-create'),
-
     path('ajax/load-genomes/', views.load_genomes, name='ajax_load_genomes'),
+
+    path('project/<int:project_pk>/uploadSeqLibrary', SeqLibrary_upload, 
+        name = 'SeqLibrary-upload'),
 ]

@@ -1,0 +1,22 @@
+{% extends "userHome/base.html" %}
+
+{% load crispy_forms_tags %}
+
+{% block content %}
+	{% if messages %}
+	{% for message in messages %}
+		<div>
+			<div class="alert {% if message.tags %} alert-{{ message.tags }}{% endif %}">{{ message|safe }}</div>
+		</div>
+	{% endfor %}
+	{% else %}
+		{{order}}
+		<form method = "post" enctype = "multipart/form-data">
+		{% csrf_token %}
+		<label> Upload a file </label>
+		<input type="file" name="file">
+		<p> Only accepts CSV files, comma as separator </p>
+		<button type = "submit">Upload</button>
+{% endif %}
+
+{% endblock content %}
