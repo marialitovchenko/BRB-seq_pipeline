@@ -10,8 +10,8 @@ from django.views.generic import (ListView,
 	DeleteView)
 from django_datatables_view.base_datatable_view import BaseDatatableView
 from django.utils.html import escape
-from .models import Project, SeqLibrary, Specie, GenomeVersion
-from .forms import SeqLibraryForm
+from .models import Project, SeqLibrary, Specie, GenomeVersion, TrimGaloreParams
+from .forms import SeqLibraryForm, TrimGaloreParamsForm
 
 def home(request):
 	context = {
@@ -108,6 +108,24 @@ def SeqLibrary_upload(request, project_pk):
 		
 	context = {}
 	return redirect('project-detail', project_pk)
+
+class TrimGaloreParamsCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+	model = TrimGaloreParams
+	form_class = TrimGaloreParamsForm
+
+	def dispatch(self, request, *args, **kwargs):
+		self.project = get_object_or_404(Project, pk=kwargs['project_pk'])
+		return super().dispatch(request, *args, **kwargs)
+
+	def form_valid(self, form):
+		form.instance.project = self.project
+		return super().form_valid(form)
+
+	def test_func(self):
+		project = self.project
+		if self.request.user == project.author :
+			return True
+		return False
 
 def tutorial(request):
     return render(request, 'userHome/tutorial.html', {'title': 'Test title'})

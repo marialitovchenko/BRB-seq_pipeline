@@ -5,7 +5,8 @@ from .views import (ProjectListView,
 	ProjectUpdateView,
 	ProjectDeleteView,
     SeqLibraryCreateView,
-    SeqLibrary_upload)
+    SeqLibrary_upload, 
+    TrimGaloreParamsCreateView)
 from . import views
 
 urlpatterns = [
@@ -23,7 +24,10 @@ urlpatterns = [
     path('project/<int:project_pk>/newSeqLibrary', SeqLibraryCreateView.as_view(), 
         name = 'SeqLibrary-create'),
     path('ajax/load-genomes/', views.load_genomes, name='ajax_load_genomes'),
-
     path('project/<int:project_pk>/uploadSeqLibrary', SeqLibrary_upload, 
         name = 'SeqLibrary-upload'),
+
+    path('project/<int:project_pk>/trimGaloreParams', 
+        TrimGaloreParamsCreateView.as_view(), 
+        name = 'trimGaloreParams'),
 ]
