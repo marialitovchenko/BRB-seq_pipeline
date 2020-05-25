@@ -17,6 +17,8 @@
   <link href="{% static 'public_website/css/aos.css' %}" rel="stylesheet">
   <!-- Various icons -->
   <link href="{% static 'public_website/css/icofont/icofont.min.css' %}" rel="stylesheet">
+  <!-- for carousels -->
+  <link href="{% static 'public_website/css/owl.carousel.min.css' %}" rel="stylesheet">
   <!-- Template Main CSS File -->
   <link href="{% static 'public_website/css/style.css' %}" rel="stylesheet">
 
@@ -84,21 +86,21 @@
           
           <!-- About company text-->
           <div class="col-sm-9 col-md-6 col-lg-8 col-xl-7">
-              <h3 data-aos="fade-up">About us</h3>
-              <p data-aos="fade-up">
+              <h3 data-aos="fade-left">About us</h3>
+              <p data-aos="fade-left">
                 Alithea Genomics provides a full range of services in the domain of molecular biology and bioinformatics. 
               </p>
-              <div class="icon-box" data-aos="fade-up">
+              <div class="icon-box" data-aos="fade-left">
                 <i class="icofont-dna-alt-2"></i>
                 <h4> MERCURIUS technology </h4>
                 <p> Our proprietary technology called MERCURIUS makes it possible to perform RNA-seq on a large number of samples in a fast, robust and cost-effective way.</p>
               </div>
-              <div class="icon-box" data-aos="fade-up" data-aos-delay="100">
+              <div class="icon-box" data-aos="fade-left" data-aos-delay="100">
                 <i class="icofont-binary"></i>
                 <h4> Bioinformatics services </h4>
                 <p>  Perform an analysis of your MERCURIUS data with just couple of cliks on our server </p>
               </div>
-              <div class="icon-box" data-aos="fade-up" data-aos-delay="100">
+              <div class="icon-box" data-aos="fade-left" data-aos-delay="100">
                 <i class="icofont-refresh"></i>
                 <h4>Full range of service </h4>
                 <p>You can rely on us on all stages of your experiment: from RNA extraction to bioinformatics analysis </p>
@@ -133,6 +135,49 @@
               <p style="text-align: justify;">Try out our kits and experience in first person the convenience of MERCURIUS. Each kit can be used to perform MERCURIUS on 96 samples.</p>
             </div>
           </div>
+        </div>
+
+      </div>
+
+      <!-- Testimonials -->
+      <div class="container" id="testimonials">
+
+        <h3 data-aos="fade-up">They chose Alithea Genomics</h3>
+
+        <div class="owl-carousel testimonials-carousel" data-aos="fade-up">
+
+          <div class="testimonial-item">
+            <p>
+              <i class="icofont-quote-left" id = "testimonials-icofont"></i> <strong>MERCURIUS was a great way for us to multiplex large numbers of RNA samples for sequencing.</strong> We wanted a gene expression curve with a tight temporal resolution, thus, many time points for several conditions. We are very happy with the quality of the results and with the cost benefit. <i class="icofont-quote-right" id = "testimonials-icofont"></i>
+            </p>
+            <h5 id="testimonials-person"> Dr. Nuno Miguel Luis</h5>
+            <h6 id="testimonials-person"> CNRS Researcher</h6>
+          </div>
+
+          <div class="testimonial-item">
+            <p>
+              <i class="icofont-quote-left" id = "testimonials-icofont"></i> <strong> MERCURIUS is very cost-effective </strong> and it enables accurate comparison of RNA levels among a large number of samples. <i class="icofont-quote-right" id = "testimonials-icofont"></i>
+            </p>
+            <h5 id="testimonials-person">Dr. Hirokazu Okada</h5>
+            <h6 id="testimonials-person">ETH Zurich</h6>
+          </div>
+
+          <div class="testimonial-item">
+            <p>
+              <i class="icofont-quote-left" id = "testimonials-icofont"></i> <strong> MERCURIUS allowed us to plan an experiment with ten times more replicates than usual</strong>, and gain insight into the variability and control of gene expression in fly embryogenesis <i class="icofont-quote-right" id = "testimonials-icofont"></i>
+            </p>
+            <h5 id="testimonials-person">Prof. Dr. Marc Robinson-Rechavi</h5>
+            <h6 id="testimonials-person">University of Lausanne</h6>
+          </div>
+
+          <div class="testimonial-item">
+            <p>
+              <i class="icofont-quote-left" id = "testimonials-icofont"></i> <strong> MERCURIUS provided us with a cost-effective way </strong> to quantify transcriptomic changes from a large set of samples. <i class="icofont-quote-right" id = "testimonials-icofont"></i>
+            </p>
+            <h5 id="testimonials-person">Prof. Dr. Martin Klingenspor</h5>
+            <h6 id="testimonials-person">TUM Munich</h6>
+          </div>
+
         </div>
 
       </div>

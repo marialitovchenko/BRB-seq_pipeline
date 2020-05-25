@@ -2,7 +2,7 @@
 /*--------------------------------------------------------------
  WEB-SITE WIDE
 --------------------------------------------------------------*/
-h1, h2, h3, h4, h5 {
+h1, h2, h3, h4, h5, h6 {
   font-family: "Helvetica";
   color: #000000;
 }
@@ -320,6 +320,63 @@ p, span {
   position: relative;
   overflow: hidden;
   text-align: center;
+}
+
+/*--------------------------------------------------------------
+ TESTIMONIALS
+--------------------------------------------------------------*/
+#testimonials {
+  margin-top: 20px;
+}
+
+.testimonial-item {
+  box-sizing: content-box;
+  min-height: 320px;
+}
+
+#testimonials-icofont {
+  color: #ee6c4d;
+}
+
+.testimonial-item p {
+  font-style: italic;
+  margin: 0 15px 0 15px;
+  padding: 20px 20px 60px 20px;
+  background: #ffffff;
+  position: relative;
+  border-radius: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.testimonial-item strong {
+  font-weight: 600;
+  color: #1a535c;
+}
+
+#testimonials-person {
+  margin-top: 10px;
+  font-weight: 500;
+  color: #1a535c;
+  text-align: center;
+}
+
+.owl-nav, .owl-dots {
+  margin-top: 5px;
+  text-align: center;
+}
+
+.owl-dot {
+  display: inline-block;
+  margin: 0 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #1a535c !important;
+}
+
+.owl-dot.active {
+  background-color: #ee6c4d !important;
 }
 
 /*--------------------------------------------------------------
