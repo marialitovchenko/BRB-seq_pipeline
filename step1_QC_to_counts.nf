@@ -99,9 +99,7 @@ mapStatsTab = outputDir + "/mapStatsTab.csv"
 // technical directory, contains all support files, like scripts, jars, etc
 params.techDir = 'techDir'
 params.brbseqTools = file(params.techDir + '/BRBseqTools.1.5.jar')
-params.combineCountsInR = file(params.techDir + '/combineCounts.R')
 params.barcodefile = file(params.techDir + '/barcodes_v3.txt')
-params.rInputTab = file(params.techDir +'/rInputTab.csv')
 
 /* ----------------------------------------------------------------------------
 * LOG: inform user about all the inputs
