@@ -29,23 +29,29 @@ def helpMessage() {
       \033[1;91m--inputTab\033[0m        Path to the table containing information about input
                         data.
                         In \033[93m mode 1 \033[0m (creating and indexing a "usual" = from ENSEML)
-                        table should have just one column: GenomeCode (i.e. hs19,
-                        hs38, ... , etc; check proper code for your specie of
-                        interest on
+                        table should have just two columns: Specie (i.e. homo_sapience),
+                        and GenomeCode (i.e. hs19, hs38, ... , etc; check proper code 
+                        for your specie of interest on
                         https://hgdownload.soe.ucsc.edu/downloads.html).
                         In \033[93m mode 2 \033[0m (creating and indexing a custom genome) table
-                        should have 3 columns: GenomeCode (desired name, i.e.
-                        MixedHsMM), Fasta (name of the fasta file for your genome,
-                        i.e. "MixedHsMM.fa", it must be located in the folder you
-                        give as genomeDir argument(folderWithGenomes))) and GTF
-                        (name of the GTF file for your genome, i.e. "MixedHsMM.gtf",
-                        it must be located in the folder you give as genomeDir
-                        argument, (folderWithGenomes))
+                        should have 4 columns: Specie (i.e. homo_sapience), GenomeCode 
+                        (desired name, i.e. MixedHsMM), Fasta (name of the fasta file for
+                        your genome, i.e. "MixedHsMM.fa", it must be located in the 
+                        genomeDir/specie_name/GenomeCode 
+                        (i.e. folderWithGenomes/homo_sapience/myCustomGenome) 
+                        and GTF (name of the GTF file for your genome, i.e. "MixedHsMM.gtf",
+                        it must be located in the genomeDir/specie_name
+                        (i.e. folderWithGenomes/homo_sapience/myCustomGenome)
+                        \033[93m You can mix two modes in one table, i.e. \033[0m
+                        Specie  GenomeCode  Fasta   GTF
+                        homo_sapience   hg19
+                        homo_sapience   myCustomGenome    customGenome.fa    customGenome.gtf
       \033[1;91m--genomeDir\033[0m       Directory
                         In \033[93m mode 1 \033[0m (creating and indexing a "usual" = from ENSEML):
                         just a directory name. It will be created.
                         In \033[93m mode 2 \033[0m (creating and indexing a custom genome):
-                        a directory containing Fasta and GTF files of your custom genome.
+                        a directory containing specie_name directory containing Fasta and 
+                        GTF files of your custom genome (i.e. folderWithGenomes/homo_sapience) 
 
     \033[1;91mOptional\033[0m arguments:
     This arguments are not going to be needed with use of graphical user
@@ -92,44 +98,55 @@ threadsNumb=6
 genomeTabCh = Channel.fromPath( genomeTabPath )
 genomeTabCh
     .splitCsv(header: true, sep:'\t')
-    .map{ row -> tuple(row.GenomeCode, row.Fasta, row.GTF) }
+    .map{ row -> tuple(row.Specie, row.GenomeCode, row.Fasta, row.GTF) }
     .into{ genomeTab_download; genomeTab_custom }
 
 genomeTab_download
-    .filter{ it[1] == null }
-    .filter{ it[2] == null}
+    .filter{ it[2] == null }
+    .filter{ it[3] == null}
     .set{genomeTab_download_flt}
 
 genomeTab_custom
-    .filter{ it[1] != null }
-    .filter{ it[2] != null}
+    .filter{ it[2] != null }
+    .filter{ it[3] != null}
     .set{genomeTab_custom_flt}
 
 /* ----------------------------------------------------------------------------
 * Download the genome if user wants new specie/version which we don't have
 *----------------------------------------------------------------------------*/
 process downloadGenome {
+    publishDir "${genomePath}/${Specie}/${GenomeCode}",
+                mode: 'copy', overwrite: true
+
     input:
-    tuple GenomeCode, Fasta, GTF from genomeTab_download_flt
+    tuple Specie, GenomeCode, Fasta, GTF from genomeTab_download_flt
 
     output:
-    tuple GenomeCode, "*.fa", "*.gtf" optional true into genomes_ensembl
+    tuple Specie, GenomeCode, "*.fa", 
+          "*.gtf" optional true into genomes_ensembl
 
     shell:
     '''
     # if both are null: this is the case to download from ENSEMBL
     if [ !{Fasta} = "null" ] && [ !{GTF} = "null" ]; then
-        echo "Strings are not equal." > 'abu.fa'
-        echo "Strings are not equal." > 'abu.gtf'
+        # Download genome from UCSC
+        wget !{goldenPath}!{GenomeCode}/bigZips/!{GenomeCode}.fa.gz
+        gunzip $genomeFasta
+
+        # Download gene annotation file
+        wget !{goldenPath}!{GenomeCode}/bigZips/genes/!{GenomeCode}.refGene.gtf.gz
+        gunzip !{GenomeCode}".refGene.gtf.gz"
     fi
     '''
 }
 
 genomeTab_custom_flt
-    .flatMap { item ->
+    .map { item ->
         GenomeCode = item[0];
         Fasta = genomePath + "/" + item[1];
-        GTF = genomePath + "/" + item[2]
+        GTF = genomePath + "/" + item[2];
+        return [ GenomeCode, Fasta, GTF ] 
     }
     .mix(genomes_ensembl)
-    .println()
+    .set{genomesToIndex}
+
