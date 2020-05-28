@@ -281,7 +281,7 @@ process mapWithStar {
     mapPrefName=`basename !{demultiplexfq} | sed 's/[.].*//g'`
     mapPrefName=$mapPrefName"_"
     STAR --runMode alignReads --readFilesIn !{demultiplexfq} \
-         --genomeDir !{genomePath}'/'!{Specie}'/'!{Genome}'/STAR_Index' \
+         --genomeDir !{genomePath}'/'!{Specie}'/'!{Genome} \
          --runThreadN !{task.cpus} \
          --outFileNamePrefix $mapPrefName \
          !{params.star_allParams}
