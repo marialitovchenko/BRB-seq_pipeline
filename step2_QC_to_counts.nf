@@ -30,10 +30,10 @@ def helpMessage() {
       \033[1;91m--inputTab\033[0m        Path to the table containing information about input
                         data. The table should have following columns: RunID,
                         (i.e. NXT0540), LibraryID (i.e. nxid12916), SampleID
-                        (i.e. BRBseq_v3_plate_1_S25), Specie (i.e. Hsapiens),
-                        Genome (i.e. hg38). Specie and Genome indicate to which
-                        genome version of which specie sample should be aligned
-                        to.
+                        (i.e. BRBseq_v3_plate_1_S25), R1len (length of read 1,
+                        i.e. 21), BU_ptrn (Barcode-UMI pattern, one of BU or 
+                        UM), Specie (i.e. Hsapiens), Genome (i.e. hg38), 
+                        Specie and Genome indicate to which genome version of which specie sample should be aligned to.
 
                         If no FQdir is provided (see below), the system will
                         assume that input fastq files are located in
@@ -159,8 +159,8 @@ log.info """\
 sampleTabCh = Channel.fromPath( sampleTabPath )
 sampleTabCh
     .splitCsv(header: true, sep:'\t')
-    .map{ row -> tuple(row.RunID, row.LibraryID, row.SampleID, row.Specie, 
-                       row.Genome) }
+    .map{ row -> tuple(row.RunID, row.LibraryID, row.SampleID, row.R1len,
+                       row.BU_ptrn, row.Specie, row.Genome) }
     .set{ sampleTab }
 
 /* ----------------------------------------------------------------------------
@@ -173,10 +173,11 @@ process trimReads {
                overwrite: true
 
     input:
-    tuple RunID, LibraryID, SampleID, Specie, Genome from sampleTab
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, 
+          Genome from sampleTab
 
     output:
-    tuple RunID, LibraryID, SampleID, Specie, Genome, 
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, 
           "${SampleID}_val_1.fq.gz", 
           "${SampleID}_val_2.fq.gz" into trimmedFiles
 
@@ -190,8 +191,8 @@ process trimReads {
              grep !{SampleID} | grep !{params.R2code} | \
              grep "!{params.fastqExtens}")
     # perform trimming with trim galore
-    trim_galore --paired $R1path $R2path --basename !{SampleID} \
-                !{params.trimGalore_allParams}
+    trim_galore --paired $R1path $R2path --length !{R1len} \
+                --basename !{SampleID} !{params.trimGalore_allParams}
     '''
 }
 
@@ -221,18 +222,19 @@ process demultiplex {
                 mode: 'copy', pattern: '*.fastq.gz', overwrite: true
 
     input:
-    tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, 
-          trimmedR2 from trimmedFiles
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, 
+          trimmedR1, trimmedR2 from trimmedFiles
 
     output:
-    tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, 
-          trimmedR2, path('*.fastq.gz') into demultiplexBundle
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, 
+          trimmedR1, trimmedR2, path('*.fastq.gz') into demultiplexBundle
 
     shell:
     '''
+    umiLen=$((!{R1len} - 10)) 
     java -jar !{params.brbseqTools} Demultiplex -r1 !{trimmedR1} \
               -r2 !{trimmedR2} -c !{params.barcodefile} -o "." \
-              !{params.brbseqTools_commonParams}
+              -UMI $umiLen -p !{BU_ptrn}
     '''
 }
 
@@ -266,12 +268,12 @@ process mapWithStar {
                 overwrite: true
 
     input:
-    tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, trimmedR2,
-          demultiplexfq from demultiplexFiles
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, 
+          trimmedR1, trimmedR2, demultiplexfq from demultiplexFiles
 
     output:
-    tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, trimmedR2,
-          demultiplexfq, path('*.sortedByCoord.out.bam'),
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, 
+          trimmedR1, trimmedR2, demultiplexfq, path('*.sortedByCoord.out.bam'),
           path('*_Log.final.out') into mappedBundle
 
     shell:
@@ -301,8 +303,8 @@ process aggregateMapStats {
     label 'low_memory'
 
     input:
-    tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, trimmedR2,
-          demultiplexfq, mappedBam, mappedLog from mappedForStats
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, trimmedR1, 
+          trimmedR2, demultiplexfq, mappedBam, mappedLog from mappedForStats
 
     output:
     stdout mappingStatsAggr
@@ -342,8 +344,8 @@ process countReads {
                mode: 'copy', pattern: '{*.detailed.txt}', overwrite: true
 
     input:
-    tuple RunID, LibraryID, SampleID, Specie, Genome, trimmedR1, trimmedR2,
-          demultiplexfq, mappedBam, mappedLog from mappedForCounts
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, trimmedR1,
+          trimmedR2, demultiplexfq, mappedBam, mappedLog from mappedForCounts
 
     output:
     tuple RunID, LibraryID, SampleID, Genome, 
@@ -353,10 +355,11 @@ process countReads {
 
     shell:
     '''
+    umiLen=$((!{R1len} - 10)) 
     gtfPath=`find !{genomePath}'/'!{Specie}'/'!{Genome} | grep .gtf$`
     java -jar -Xmx2g !{params.brbseqTools} CreateDGEMatrix -f !{trimmedR1} \
          -b !{mappedBam} -c !{params.barcodefile} -o "." \
-         -gtf $gtfPath !{params.brbseqTools_commonParams}
+         -gtf $gtfPath -UMI $umiLen -p !{BU_ptrn} 
    
     samplName=`basename !{mappedBam} | sed 's/_Aligned.sortedByCoord.out.bam/.count/g'`
     mv output.dge.reads.detailed.txt $samplName".dge.reads.detailed.txt"
