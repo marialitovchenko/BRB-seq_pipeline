@@ -5,46 +5,56 @@ def helpMessage() {
     log.info """
     -      \033[41m B R B - s e q   N E X T F L O W  I N D E X  G E N O M E v1.0\033[0m-
     ================================================================================
-    Welcome to the Nextflow BRB-seq genome indexing pipeline
+    Welcome to the Nextflow BRB-seq genome indexing pipeline. This pipeline can be 
+    used in two modes: 1) creating and indexing a "usual" = from ENSEML genome and
+    2) creating and indexing a custom genome, i.e. then you have plasmids included
+    into the genome or specie-mixed genome. For the mode 1 you don't need to 
+    download anything, the download will be done automatically. For the mode 2 you
+    need to provide fasta file and gtf file. 
 
     Usage:
     The \033[1;91mtypical\033[0m command for running the pipeline is as follows:
     nextflow forTest.nf \033[1;91m--inputTab\033[0m table.csv \\
-                        \033[1;91m--genomeDir\033[0m allGenomes 
+                        \033[1;91m--genomeDir\033[0m folderWithGenomes 
 
     or
 
     to put the pipeline into \033[1;91mbackground\033[0m mode:
     nextflow forTest.nf \033[1;91m--inputTab\033[0m table.csv \\
-                        \033[1;91m--genomeDir\033[0m allGenomes \\
+                        \033[1;91m--genomeDir\033[0m folderWithGenomes \\
                         \033[1;91m-bg\033[0m \\
                         \033[1;91m-N\033[0m your.email@gmail.com
 
     \033[1;91mMandatory\033[0m arguments:
       \033[1;91m--inputTab\033[0m        Path to the table containing information about input
-                        data. The table should have following columns: RunID,
-                        (i.e. NXT0540), LibraryID (i.e. nxid12916), SampleID
-                        (i.e. BRBseq_v3_plate_1_S25), Specie (i.e. Hsapiens),
-                        Genome (i.e. hg38). Specie and Genome indicate to which
-                        genome version of which specie sample should be aligned
-                        to.
-      \033[1;91m--genomeDir\033[0m       Path to the directory containing all your genome
-                        versions for all your species. For example, a valid
-                        genome directory TestGenomeDir would contain two
-                        folders names mus_musculus and homo_sapiens.
-                        Consequently, homo_sapiens folder would contain
-                        GRCh37.75 and GRCh38.99, and mus_musculus would contain
-                        GRCm38.68 and GRCm38.98. \033[93m Please use then homo_sapiens
-                        or mus_musculus in a Specie column of your input table,
-                        and use GRCh37.75/GRCh38.99/GRCm38.68/GRCm38.98 in a
-                        Genome column.\033[0m
+                        data.
+                        In \033[93m mode 1 \033[0m (creating and indexing a "usual" = from ENSEML)
+                        table should have just one column: GenomeCode (i.e. hs19,
+                        hs38, ... , etc; check proper code for your specie of
+                        interest on
+                        https://hgdownload.soe.ucsc.edu/downloads.html).
+                        In \033[93m mode 2 \033[0m (creating and indexing a custom genome) table
+                        should have 3 columns: GenomeCode (desired name, i.e.
+                        MixedHsMM), Fasta (name of the fasta file for your genome,
+                        i.e. "MixedHsMM.fa", it must be located in the folder you
+                        give as genomeDir argument(folderWithGenomes))) and GTF
+                        (name of the GTF file for your genome, i.e. "MixedHsMM.gtf",
+                        it must be located in the folder you give as genomeDir
+                        argument, (folderWithGenomes))
+      \033[1;91m--genomeDir\033[0m       Directory
+                        In \033[93m mode 1 \033[0m (creating and indexing a "usual" = from ENSEML):
+                        just a directory name. It will be created.
+                        In \033[93m mode 2 \033[0m (creating and indexing a custom genome):
+                        a directory containing Fasta and GTF files of your custom genome.
 
     \033[1;91mOptional\033[0m arguments:
     This arguments are not going to be needed with use of graphical user
     interface
       \033[1;91m--help\033[0m            Displays this message
       \033[1;91m-bg\033[0m               Puts execution of the pipeline into background mode
-      \033[1;91m-N\033[0m                email adress in order to get notified upon pipeline complition.Do not use epfl email address, because emails can't pass firewall. Use gmail.
+      \033[1;91m-N\033[0m                email adress in order to get notified upon pipeline complition.
+                        Do not use epfl email address, because emails can't pass firewall.
+                        Use gmail.
       \033[1;91m-resume\033[0m           Resumes execution of the pipeline from the moment it
                         was interrupted
       """.stripIndent()
