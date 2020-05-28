@@ -125,6 +125,11 @@ process downloadGenome {
     '''
 }
 
-genomes_ensembl
-    .mix(genomeTab_custom_flt)
+genomeTab_custom_flt
+    .flatMap { item ->
+        GenomeCode = item[0];
+        Fasta = genomePath + "/" + item[1];
+        GTF = genomePath + "/" + item[2]
+    }
+    .mix(genomes_ensembl)
     .println()
