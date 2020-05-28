@@ -70,7 +70,7 @@ if (params.help) {
 /* ----------------------------------------------------------------------------
 * Input handling
 *----------------------------------------------------------------------------*/
-// path to the input table with specie name, genome version
+// path to the input table (with columns in dependence with mode )
 genomeTabPath = file(params.inputTab)
 
 // genomes directory (basically output folder): directory where indexed genome
@@ -81,7 +81,7 @@ genomePath = file(params.genomeDir)
 // common inputs: path to UCSC genomes
 goldenPath="https://hgdownload.soe.ucsc.edu/goldenPath/"
 // path to picard jar
-picardJar=/home/litovche/bin/picard.jar
+picardJar="/home/litovche/bin/picard.jar"
 
 threadsNumb=6
 
@@ -92,62 +92,39 @@ threadsNumb=6
 genomeTabCh = Channel.fromPath( genomeTabPath )
 genomeTabCh
     .splitCsv(header: true, sep:'\t')
-    .map{ row -> tuple(row.Specie, row.GenomeVersion, row.genomeFasta, row.genomeGTF) }
-    .set{ genomeTab }
+    .map{ row -> tuple(row.GenomeCode, row.Fasta, row.GTF) }
+    .into{ genomeTab_download; genomeTab_custom }
+
+genomeTab_download
+    .filter{ it[1] == null }
+    .filter{ it[2] == null}
+    .set{genomeTab_download_flt}
+
+genomeTab_custom
+    .filter{ it[1] != null }
+    .filter{ it[2] != null}
+    .set{genomeTab_custom_flt}
 
 /* ----------------------------------------------------------------------------
 * Download the genome if user wants new specie/version which we don't have
 *----------------------------------------------------------------------------*/
-//process downloadGenome {
-//    publishDir genomeDir, pattern: '*.fa'
-//
-//    input:
-//    tuple goldenPath, genomeVersion
-//
-//    output:
-//    tuple '*.fa', '*.gtf' into genomeFiles
-
-//    shell:
-//    '''
-//    # Download genome from UCSC
-//    genomeFasta="!{genomeVersion}"".fa.gz"
-//    wget "!{goldenPath}""!{genomeVersion}""/chromosomes/chr21.fa.gz"
-//    gunzip chr21.fa.gz
-//
-//    # Download gene annotation file
-//    wget "!{goldenPath}""!{genomeVersion}""/bigZips/genes/""!{genomeVersion}"".refGene.gtf.gz"
-//    gunzip "!{genomeVersion}"".refGene.gtf.gz"
-//    '''
-//}
-
-/* ----------------------------------------------------------------------------
-* Index genome for use with STAR
-*----------------------------------------------------------------------------*/
-process indexGenomeForSTAR {
-    publishDir genomeDir
-
+process downloadGenome {
     input:
-    tuple Specie, GenomeVersion, genomeFasta, genomeGTF from genomeFiles
-    //tuple genomeFasta, genomeGTF from genomeFiles
+    tuple GenomeCode, Fasta, GTF from genomeTab_download_flt
+
+    output:
+    tuple GenomeCode, "*.fa", "*.gtf" optional true into genomes_ensembl
 
     shell:
     '''
-    # index with STAR
-    STAR --runMode genomeGenerate --runThreadN "!{threadsNumb}" --genomeDir "!{genomeDir}" \
-    --genomeFastaFiles "!{genomeFasta}" --sjdbGTFfile "!{genomeGTF}"
-    # created files: chrLength.txt, chrStart.txt, exonGeTrInfo.tab,
-    # genomeParameters.txt, SA, sjdbList.fromGTF.out.tab,
-    # chrNameLength.txt, exonInfo.tab, geneInfo.tab, Log.out, SAindex,
-    # sjdbList.out.tab, chrName.txt, Genome, sjdbInfo.txt, transcriptInfo.tab
-
-    # index with samtools
-    samtools faidx "!{genomeFasta}"
-    # created files :  *.fai
-
-    # index picard
-    dictFile=$(echo "!{genomeFasta}" | sed "s/fa$/dict/g")
-    java -jar "!{picardJar}" CreateSequenceDictionary \
-              REFERENCE="!{genomeFasta}" OUTPUT=$dictFile
-    # created files: *.dict
+    # if both are null: this is the case to download from ENSEMBL
+    if [ !{Fasta} = "null" ] && [ !{GTF} = "null" ]; then
+        echo "Strings are not equal." > 'abu.fa'
+        echo "Strings are not equal." > 'abu.gtf'
+    fi
     '''
 }
+
+genomes_ensembl
+    .mix(genomeTab_custom_flt)
+    .println()
