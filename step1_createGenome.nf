@@ -101,6 +101,8 @@ genomeTabCh
     .map{ row -> tuple(row.Specie, row.GenomeCode, row.Fasta, row.GTF) }
     .into{ genomeTab_download; genomeTab_custom }
 
+// separate genomes which needed to be downloaded from ensemle 
+// (genomeTab_download_flt) from the custom ones
 genomeTab_download
     .filter{ it[2] == null }
     .filter{ it[3] == null}
@@ -131,22 +133,54 @@ process downloadGenome {
     if [ !{Fasta} = "null" ] && [ !{GTF} = "null" ]; then
         # Download genome from UCSC
         wget !{goldenPath}!{GenomeCode}/bigZips/!{GenomeCode}.fa.gz
-        gunzip $genomeFasta
+        gunzip !{GenomeCode}.fa.gz
 
         # Download gene annotation file
         wget !{goldenPath}!{GenomeCode}/bigZips/genes/!{GenomeCode}.refGene.gtf.gz
-        gunzip !{GenomeCode}".refGene.gtf.gz"
+        gunzip !{GenomeCode}.refGene.gtf.gz
     fi
     '''
 }
 
 genomeTab_custom_flt
     .map { item ->
-        GenomeCode = item[0];
-        Fasta = genomePath + "/" + item[1];
-        GTF = genomePath + "/" + item[2];
-        return [ GenomeCode, Fasta, GTF ] 
+        Specie = item[0];
+        GenomeCode = item[1];
+        Fasta = genomePath + "/" + item[2];
+        GTF = genomePath + "/" + item[3];
+        return [ Specie, GenomeCode, Fasta, GTF ] 
     }
     .mix(genomes_ensembl)
     .set{genomesToIndex}
 
+/* ----------------------------------------------------------------------------
+* Index genome for use with STAR
+*----------------------------------------------------------------------------*/
+process indexGenomeForSTAR {
+    publishDir "${genomePath}/${Specie}/${GenomeCode}",
+                mode: 'copy', overwrite: true
+
+    input:
+    tuple Specie, GenomeVersion, Fasta, GTF from genomesToIndex
+
+    shell:
+    '''
+    # index with STAR
+    STAR --runMode genomeGenerate --runThreadN "!{threadsNumb}" --genomeDir "!{genomeDir}" \
+    --genomeFastaFiles "!{genomeFasta}" --sjdbGTFfile "!{genomeGTF}"
+    # created files: chrLength.txt, chrStart.txt, exonGeTrInfo.tab,
+    # genomeParameters.txt, SA, sjdbList.fromGTF.out.tab,
+    # chrNameLength.txt, exonInfo.tab, geneInfo.tab, Log.out, SAindex,
+    # sjdbList.out.tab, chrName.txt, Genome, sjdbInfo.txt, transcriptInfo.tab
+
+    # index with samtools
+    samtools faidx "!{genomeFasta}"
+    # created files :  *.fai
+
+    # index picard
+    dictFile=$(echo "!{genomeFasta}" | sed "s/fa$/dict/g")
+    java -jar "!{picardJar}" CreateSequenceDictionary \
+              REFERENCE="!{genomeFasta}" OUTPUT=$dictFile
+    # created files: *.dict
+    '''
+}
