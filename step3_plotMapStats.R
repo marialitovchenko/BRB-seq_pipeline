@@ -433,6 +433,16 @@ server <- function(input, output, session) {
                                 pdf(file, width = input$rawPlotW / 72, 
                                     height = input$rawPlotH / 72)
                               }
+                      # select data to plot 
+                      selectedDT <- mapData()
+                      selectedDT <- selectedDT[RunID %in% input$runsToDisplay &
+                                                 LibraryID %in% input$libsToDisplay]
+                      if (identical(input$samplesToDisplay, 'All')) {
+                        selectedDT <- selectedDT
+                      } else {
+                        selectedDT <- selectedDT[SubSample %in% input$samplesToDisplay]
+                      }
+                      # calculate labels
                       plotLabels <- selectedDT[, .(RunID, LibraryID)]
                       plotLabels <- plotLabels[!duplicated(plotLabels), ]
                       plotLabels <- paste(plotLabels$RunID, plotLabels$LibraryID,
@@ -489,6 +499,16 @@ server <- function(input, output, session) {
                                  pdf(file, width = input$percPlotW / 72,
                                      height = input$percPlotH / 72)
                                }
+                       # select data to plot 
+                       selectedDT <- mapData()
+                       selectedDT <- selectedDT[RunID %in% input$runsToDisplay &
+                                                  LibraryID %in% input$libsToDisplay]
+                       if (identical(input$samplesToDisplay, 'All')) {
+                         selectedDT <- selectedDT
+                       } else {
+                         selectedDT <- selectedDT[SubSample %in% input$samplesToDisplay]
+                       }
+                       # make plots
                        plotLabels <- selectedDT[, .(RunID, LibraryID)]
                        plotLabels <- plotLabels[!duplicated(plotLabels), ]
                        plotLabels <- paste(plotLabels$RunID, plotLabels$LibraryID,
