@@ -19,6 +19,7 @@ library(data.table)
 library(DT)
 library(ggpubr)
 library(ggplot2)
+library(limma)
 library(shiny)
 
 # plotting theme
@@ -102,3 +103,44 @@ ggplot(metaData, aes(x = ID, y = numbGenesInSamples, fill = Color)) +
   mashaGgplot2Theme + facet_grid(. ~ `Experiment batch`, scales = 'free_x') +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+# Normalize with voom ---------------------------------------------------------
+# now, let's perform a quantile normalization with voom. There are other types
+# of normalization, such as "scale" and "cyclicloess" which you can put instead
+# of "quantile", but "quantile" is the most popular
+countTabMatr <- as.matrix(countTab[, -2:-1])
+rownames(countTabMatr) <- countTab$Gene_id
+countsNormVoom <- voom(counts = countTabMatr, normalize.method = "quantile")
+countsNormVoom <- countsNormVoom$E
+
+# now we can also remove QC rows from the table
+countsNormVoom <- countsNormVoom[!rownames(countsNormVoom) %in% qcNames, ]
+
+# PCA on normalized data ------------------------------------------
+# calculate PCA loadings of our count matrix
+countsNormVoomPCA <- prcomp(t(countsNormVoom))
+# calculate how much of variation (in percentage term) every PC explains
+percPCexpl <- round(countsNormVoomPCA$sdev / sum(countsNormVoomPCA$sdev) * 100,
+                    2)
+names(percPCexpl) <- paste0('PC', 1:length(percPCexpl))
+
+# how many of PCs to include in your consideration? Check with elbow plow!
+plot(percPCexpl, xlab = 'PC index', ylab = '% of the variation explained', 
+     main = 'Elbow plot for the PCA', pch = 20, type = 'o', bty = 'n',
+     ylim = c(0, 1.1 * max(percPCexpl)))
+# it's ugly, but it does the job. You need to look where the line has an 
+# "elbow" - it's your altimate number of PCs.
+
+# create matrix for plotting
+countsNormVoomPCA <- as.data.frame(countsNormVoomPCA$x)
+# let's add to this matrix some factors which we think may explain separation,
+# like sex, age, differentiation status. So, basically, whole info table. In 
+# order to ensure proper match between the tables, we will first sort them
+infoTab <- infoTab[sort(rownames(infoTab)), ]
+countsNormVoomPCA <- countsNormVoomPCA[sort(rownames(countsNormVoomPCA)),]
+pcaToPlot <- cbind(infoTab, countsNormVoomPCA)
+
+ggplot(pcaToPlot,aes(x = PC1, y = PC2, color = CellType, label = Sex)) + 
+  geom_point() + geom_text() + 
+  xlab(paste0('PC1 (', percPCexpl['PC1'], '%)')) + 
+  ylab(paste0('PC2 (', percPCexpl['PC2'], '%)')) + 
+  ggtitle("PCA based on voom normalized data") + theme_classic()
