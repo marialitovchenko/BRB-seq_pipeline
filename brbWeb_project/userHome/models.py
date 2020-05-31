@@ -92,4 +92,62 @@ class TrimGaloreParams(models.Model):
 
 class STARParams(models.Model):
 	project = models.ForeignKey(Project, null = True, on_delete = models.CASCADE)
-	runThreadN = models.CharField(max_length = 100)
+	runRNGseed
+
+
+
+runRNGseed
+genomeChrBinNbits
+genomeSAindexNbases
+genomeSAsparseD
+genomeSuffixLengthMax
+sjdbFileChrStartEnd
+sjdbGTFfile
+sjdbGTFchrPrefix
+sjdbGTFfeatureExon
+sjdbGTFtagExonParentTranscript
+sjdbGTFtagExonParentGene
+sjdbOverhang
+sjdbScore
+sjdbInsertSave
+varVCFfile
+
+
+readMapNumber
+readMatesLengthsIn
+readStrand
+clip3pNbases
+clip5pNbases
+clip3pAdapterSeq
+clip3pAdapterMMp
+clip3pAfterAdapterNbases
+outReadsUnmapped
+outFilterType
+outFilterMultimapScoreRange
+outFilterMultimapNmax
+outFilterMismatchNmax
+outFilterMismatchNoverLmax
+outFilterMismatchNoverReadLmax
+outFilterScoreMin
+outFilterScoreMinOverLread
+outFilterIntronMotifs
+outFilterIntronStrands
+outSJfilterReads
+outSJfilterOverhangMin
+outSJfilterCountUniqueMin
+outSJfilterCountTotalMin
+outSJfilterDistToOtherSJmin
+outSJfilterIntronMaxVsReadN
+scoreGap
+scoreGapNoncan
+scoreGapGCAG
+scoreGapATAC
+scoreGenomicLengthLog2scale
+scoreDelOpen
+scoreDelBase
+scoreInsOpen
+scoreInsBase
+scoreStitchSJshift
+seedSearchStartLmax
+seedSearchStartLmaxOverLread
+seedSearchLmax
