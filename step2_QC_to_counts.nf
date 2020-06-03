@@ -244,13 +244,16 @@ demultiplexBundle
         RunID = item[0];
         LibraryID = item[1];
         SampleID = item[2];
-        Specie = item[3];
-        Genome = item[4];
-        trimmedR1 = item[5];
-        trimmedR2 = item[6];
-        files  = item[7];
-        files.collect { onefile -> return [ RunID, LibraryID, SampleID, Specie,
-                        Genome, trimmedR1, trimmedR2, onefile ] }
+        R1len = item[3];
+        BU_ptrn = item[4];
+        Specie = item[5];
+        Genome = item[6];
+        trimmedR1 = item[7];
+        trimmedR2 = item[8];
+        files = item[9];
+        files.collect { onefile -> return [ RunID, LibraryID, SampleID, R1len,
+                        BU_ptrn, Specie, Genome, trimmedR1, trimmedR2, 
+                        onefile ] }
     }
     .set { demultiplexFiles }
 
