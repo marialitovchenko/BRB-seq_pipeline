@@ -136,8 +136,25 @@ process downloadGenome {
         gunzip !{GenomeCode}.fa.gz
 
         # Download gene annotation file
-        wget !{goldenPath}!{GenomeCode}/bigZips/genes/!{GenomeCode}.refGene.gtf.gz
-        gunzip !{GenomeCode}.refGene.gtf.gz
+        urlBase=!{goldenPath}!{GenomeCode}/bigZips/genes/!{GenomeCode}
+        # the best to use with UCSC genome is refGene, but some species don't
+        # have it. In That case one needs to try other annotations
+        annoTypes=(refGene ensGene ncbiRefSeq)
+        # will try until something is downloaded
+        wget "$urlBase".refGene.gtf.gz || continue
+        if test -f !{GenomeCode}.refGene.gtf.gz; then
+            gunzip !{GenomeCode}.refGene.gtf.gz
+        else
+            wget "$urlBase".ensGene.gtf.gz || continue
+            if test -f !{GenomeCode}.ensGene.gtf.gz; then
+                gunzip !{GenomeCode}.ensGene.gtf.gz
+            else
+                wget "$urlBase".ncbiRefSeq.gtf.gz || continue
+                if test -f !{GenomeCode}.ncbiRefSeq.gtf.gz; then
+                    gunzip !{GenomeCode}.ncbiRefSeq.gtf.gz
+                fi
+            fi
+        fi
     fi
     '''
 }
