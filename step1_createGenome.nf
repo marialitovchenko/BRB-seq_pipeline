@@ -110,7 +110,7 @@ genomeTabCh
 genomeTab_download
     .filter{ it[2] == null }
     .filter{ it[3] == null}
-    .set{genomeTab_download_flt}
+    .set{ genomeTab_download_flt }
 
 genomeTab_custom
     .filter{ it[2] != null }
@@ -174,23 +174,20 @@ genomeTab_custom_flt
         return [ Specie, GenomeCode, Fasta, GTF ] 
     }
     .mix(genomes_ensembl)
-    .set{genomesToIndex}
+    .set{allGenomes}
 
 /* ----------------------------------------------------------------------------
 * [Optional] create custom GTF for markers fasta
 *----------------------------------------------------------------------------*/
-
-if( markerFastaPath == file('.') ) {
-    params.addMarker = false
-    echo "ICI"
-}
-else {
+if( markerFastaPath != file('.') ) {
+    // get the legth of each fasta sequence marker
     Channel
      .fromPath(markerFastaPath)
      .splitFasta( record: [id: true, seqString: true ])
      .map{ record -> tuple(record.id, record.seqString.length()) }
      .set{markerFasta}
 
+     // create a GTF file corresponding to the markers
      process createMarkerGTF {
         echo true
 
@@ -214,6 +211,27 @@ else {
         echo -e !{markerID}' \t 'protein_coding' \t 'stop_codon' \t '$((!{markerSeqLen} - 2))' \t '!{markerSeqLen}' \t '.' \t '+' \t '0' \t '$geneID_exonID$geneName_biotype$transcriptid_Source >> !{markerID}'.gtf'
         '''
      }
+
+    process addMarkerToRefGen {
+        input:
+        path markerGTF from markerGTF
+        tuple Specie, GenomeCode, Fasta, GTF from allGenomes
+
+        output:
+        tuple Specie, GenomeCode, path('*.fa'), path('*.gtf') into genomesToIndex1
+
+        shell:
+        '''
+        refGenFaWithMarkers=$(basename !{Fasta} | sed 's/.*//g')
+        refGenFaWithMarkers=$(echo $refGenFaWithMarkers'_withMarkers.fa')
+
+        refGenGTFwithMarkers=$(basename !{Fasta} | sed 's/.*//g')
+        refGenGTFwithMarkers=$(echo $refGenGTFwithMarkers'_withMarkers.gtf')
+
+        cat !{Fasta} !{markerFastaPath} > $refGenFaWithMarkers
+        cat !{GTF} !{markerGTF} > $refGenGTFwithMarkers
+        '''
+    }
 }
 
 /* ----------------------------------------------------------------------------
