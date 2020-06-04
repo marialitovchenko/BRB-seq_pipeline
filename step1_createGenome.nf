@@ -79,6 +79,10 @@ if (params.help) {
 // path to the input table (with columns in dependence with mode )
 genomeTabPath = file(params.inputTab)
 
+// path to fasta file with sequences of markers, i.e. GFP
+params.markerFasta = file('.')
+markerFastaPath = file(params.markerFasta)
+
 // genomes directory (basically output folder): directory where indexed genome
 // will be put to
 params.genomeDir = file('.')
@@ -171,6 +175,46 @@ genomeTab_custom_flt
     }
     .mix(genomes_ensembl)
     .set{genomesToIndex}
+
+/* ----------------------------------------------------------------------------
+* [Optional] create custom GTF for markers fasta
+*----------------------------------------------------------------------------*/
+
+if( markerFastaPath == file('.') ) {
+    params.addMarker = false
+    echo "ICI"
+}
+else {
+    Channel
+     .fromPath(markerFastaPath)
+     .splitFasta( record: [id: true, seqString: true ])
+     .map{ record -> tuple(record.id, record.seqString.length()) }
+     .set{markerFasta}
+
+     process createMarkerGTF {
+        echo true
+
+        input:
+        tuple markerID, markerSeqLen from markerFasta
+
+        output:
+        path('*.gtf') into markerGTF
+
+        shell:
+        '''
+        geneID_exonID='gene_id "'!{markerID}'-gene"; transcript_id "'!{markerID}'-tr"; exon_number "1"; '
+        geneName_biotype='gene_name "'!{markerID}'-gene"; gene_source "user"; gene_biotype "protein_coding";'
+        transcriptid_Source=' transcript_name "'!{markerID}'-001"; transcript_source "user";'
+
+        echo -e !{markerID}' \t 'protein_coding' \t 'gene' \t '1' \t '!{markerSeqLen}' \t '.' \t '+' \t '.' \t ''gene_id "'!{markerID}'-gene"; '$geneName_biotype > !{markerID}'.gtf'
+        echo -e !{markerID}' \t 'protein_coding' \t 'transcript' \t '1' \t '!{markerSeqLen}' \t '.' \t '+' \t '.' \t ''gene_id "'!{markerID}'-gene"; transcript_id "'!{markerID}'-tr"; '$geneName_biotype$transcriptid_Source >> !{markerID}'.gtf'
+        echo -e !{markerID}' \t 'protein_coding' \t 'exon' \t '1' \t '!{markerSeqLen}' \t '.' \t '+' \t '.' \t '$geneID_exonID$geneName_biotype$transcriptid_Source' exon_id "'!{markerID}'-exon";' >> !{markerID}'.gtf'
+        echo -e !{markerID}' \t 'protein_coding' \t 'CDS' \t '1' \t '!{markerSeqLen}' \t '.' \t '+' \t '0' \t '$geneID_exonID$geneName_biotype$transcriptid_Source' protein_id "'!{markerID}'-protein";' >> !{markerID}'.gtf'
+        echo -e !{markerID}' \t 'protein_coding' \t 'start_codon' \t '1' \t '3' \t '.' \t '+' \t '0' \t '$geneID_exonID$geneName_biotype$transcriptid_Source >> !{markerID}'.gtf'
+        echo -e !{markerID}' \t 'protein_coding' \t 'stop_codon' \t '$((!{markerSeqLen} - 2))' \t '!{markerSeqLen}' \t '.' \t '+' \t '0' \t '$geneID_exonID$geneName_biotype$transcriptid_Source >> !{markerID}'.gtf'
+        '''
+     }
+}
 
 /* ----------------------------------------------------------------------------
 * Index genome for use with STAR
