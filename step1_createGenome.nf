@@ -163,8 +163,10 @@ genomeTab_custom_flt
     .map { item ->
         Specie = item[0];
         GenomeCode = item[1];
-        Fasta = genomePath + "/" + item[2];
-        GTF = genomePath + "/" + item[3];
+        Fasta = genomePath.toString() + "/" + item[0] + "/" + 
+                item[1] + "/" + item[2];
+        GTF = genomePath.toString() +  "/" + item[0] + "/" + 
+                item[1] + "/" + item[3];
         return [ Specie, GenomeCode, Fasta, GTF ] 
     }
     .mix(genomes_ensembl)
