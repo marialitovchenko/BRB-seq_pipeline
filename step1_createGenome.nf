@@ -103,19 +103,57 @@ genomeTabCh = Channel.fromPath( genomeTabPath )
 genomeTabCh
     .splitCsv(header: true, sep:'\t')
     .map{ row -> tuple(row.Specie, row.GenomeCode, row.Fasta, row.GTF) }
-    .into{ genomeTab_download; genomeTab_custom }
+    .set{ genomeTab }
+
+genomeTab
+    .into { genomeTab_download; genomeTab_custom }
 
 // separate genomes which needed to be downloaded from ensemle 
 // (genomeTab_download_flt) from the custom ones
+genomeTab_custom
+    .filter{ it[2] && it[3] }
+    .set{ genomeTab_custom_flt }
+
 genomeTab_download
-    .filter{ it[2] == null }
-    .filter{ it[3] == null}
+    .filter{ !it[2] && !it[3] }
     .set{ genomeTab_download_flt }
 
-genomeTab_custom
-    .filter{ it[2] != null }
-    .filter{ it[3] != null}
-    .set{genomeTab_custom_flt}
+/* ----------------------------------------------------------------------------
+* [Optional] create custom GTF for markers fasta
+*----------------------------------------------------------------------------*/
+if( markerFastaPath != file('.') ) {
+    // get the legth of each fasta sequence marker
+    Channel
+     .fromPath(markerFastaPath)
+     .splitFasta( record: [id: true, seqString: true ])
+     .map{ record -> tuple(record.id, record.seqString.length()) }
+     .set{markerFasta}
+
+     // create a GTF file corresponding to the markers
+     process createMarkerGTF {
+        echo true
+
+        input:
+        tuple markerID, markerSeqLen from markerFasta
+
+        output:
+        path('*.gtf') into markerGTF
+
+        shell:
+        '''
+        geneID_exonID='gene_id "'!{markerID}'-gene"; transcript_id "'!{markerID}'-tr"; exon_number "1"; '
+        geneName_biotype='gene_name "'!{markerID}'-gene"; gene_source "user"; gene_biotype "protein_coding";'
+        transcriptid_Source=' transcript_name "'!{markerID}'-001"; transcript_source "user";'
+
+        echo -e !{markerID}' \t 'protein_coding' \t 'gene' \t '1' \t '!{markerSeqLen}' \t '.' \t '+' \t '.' \t ''gene_id "'!{markerID}'-gene"; '$geneName_biotype > !{markerID}'.gtf'
+        echo -e !{markerID}' \t 'protein_coding' \t 'transcript' \t '1' \t '!{markerSeqLen}' \t '.' \t '+' \t '.' \t ''gene_id "'!{markerID}'-gene"; transcript_id "'!{markerID}'-tr"; '$geneName_biotype$transcriptid_Source >> !{markerID}'.gtf'
+        echo -e !{markerID}' \t 'protein_coding' \t 'exon' \t '1' \t '!{markerSeqLen}' \t '.' \t '+' \t '.' \t '$geneID_exonID$geneName_biotype$transcriptid_Source' exon_id "'!{markerID}'-exon";' >> !{markerID}'.gtf'
+        echo -e !{markerID}' \t 'protein_coding' \t 'CDS' \t '1' \t '!{markerSeqLen}' \t '.' \t '+' \t '0' \t '$geneID_exonID$geneName_biotype$transcriptid_Source' protein_id "'!{markerID}'-protein";' >> !{markerID}'.gtf'
+        echo -e !{markerID}' \t 'protein_coding' \t 'start_codon' \t '1' \t '3' \t '.' \t '+' \t '0' \t '$geneID_exonID$geneName_biotype$transcriptid_Source >> !{markerID}'.gtf'
+        echo -e !{markerID}' \t 'protein_coding' \t 'stop_codon' \t '$((!{markerSeqLen} - 2))' \t '!{markerSeqLen}' \t '.' \t '+' \t '0' \t '$geneID_exonID$geneName_biotype$transcriptid_Source >> !{markerID}'.gtf'
+        '''
+     }
+}
 
 /* ----------------------------------------------------------------------------
 * Download the genome if user wants new specie/version which we don't have
@@ -173,63 +211,38 @@ genomeTab_custom_flt
                 item[1] + "/" + item[3];
         return [ Specie, GenomeCode, Fasta, GTF ] 
     }
-    .mix(genomes_ensembl)
-    .set{allGenomes}
+    .set{genomeTab_custom_flt_remodel}
+
+// using of concat allows to wait for the download finish, if needed
+genomes_ensembl
+    .combine(genomeTab_custom_flt_remodel)
+    .flatMap()
+    .collate( 4 )
+    .combine( markerGTF )
+    .set{ allGenomes }
 
 /* ----------------------------------------------------------------------------
 * [Optional] create custom GTF for markers fasta
 *----------------------------------------------------------------------------*/
 if( markerFastaPath != file('.') ) {
-    // get the legth of each fasta sequence marker
-    Channel
-     .fromPath(markerFastaPath)
-     .splitFasta( record: [id: true, seqString: true ])
-     .map{ record -> tuple(record.id, record.seqString.length()) }
-     .set{markerFasta}
-
-     // create a GTF file corresponding to the markers
-     process createMarkerGTF {
+     process addMarkerToRefGen {
         echo true
-
         input:
-        tuple markerID, markerSeqLen from markerFasta
-
-        output:
-        path('*.gtf') into markerGTF
+        tuple Specie, GenomeCode, Fasta, GTF, addToGTF from allGenomes
 
         shell:
         '''
-        geneID_exonID='gene_id "'!{markerID}'-gene"; transcript_id "'!{markerID}'-tr"; exon_number "1"; '
-        geneName_biotype='gene_name "'!{markerID}'-gene"; gene_source "user"; gene_biotype "protein_coding";'
-        transcriptid_Source=' transcript_name "'!{markerID}'-001"; transcript_source "user";'
-
-        echo -e !{markerID}' \t 'protein_coding' \t 'gene' \t '1' \t '!{markerSeqLen}' \t '.' \t '+' \t '.' \t ''gene_id "'!{markerID}'-gene"; '$geneName_biotype > !{markerID}'.gtf'
-        echo -e !{markerID}' \t 'protein_coding' \t 'transcript' \t '1' \t '!{markerSeqLen}' \t '.' \t '+' \t '.' \t ''gene_id "'!{markerID}'-gene"; transcript_id "'!{markerID}'-tr"; '$geneName_biotype$transcriptid_Source >> !{markerID}'.gtf'
-        echo -e !{markerID}' \t 'protein_coding' \t 'exon' \t '1' \t '!{markerSeqLen}' \t '.' \t '+' \t '.' \t '$geneID_exonID$geneName_biotype$transcriptid_Source' exon_id "'!{markerID}'-exon";' >> !{markerID}'.gtf'
-        echo -e !{markerID}' \t 'protein_coding' \t 'CDS' \t '1' \t '!{markerSeqLen}' \t '.' \t '+' \t '0' \t '$geneID_exonID$geneName_biotype$transcriptid_Source' protein_id "'!{markerID}'-protein";' >> !{markerID}'.gtf'
-        echo -e !{markerID}' \t 'protein_coding' \t 'start_codon' \t '1' \t '3' \t '.' \t '+' \t '0' \t '$geneID_exonID$geneName_biotype$transcriptid_Source >> !{markerID}'.gtf'
-        echo -e !{markerID}' \t 'protein_coding' \t 'stop_codon' \t '$((!{markerSeqLen} - 2))' \t '!{markerSeqLen}' \t '.' \t '+' \t '0' \t '$geneID_exonID$geneName_biotype$transcriptid_Source >> !{markerID}'.gtf'
-        '''
-     }
-
-    process addMarkerToRefGen {
-        input:
-        path markerGTF from markerGTF
-        tuple Specie, GenomeCode, Fasta, GTF from allGenomes
-
-        output:
-        tuple Specie, GenomeCode, path('*.fa'), path('*.gtf') into genomesToIndex1
-
-        shell:
-        '''
-        refGenFaWithMarkers=$(basename !{Fasta} | sed 's/.*//g')
+        echo !{Fasta}
+        echo basename !{Fasta}
+        echo 's/.*//g'
+        refGenFaWithMarkers=$(basename !{Fasta} | sed 's/[.].*//g')
         refGenFaWithMarkers=$(echo $refGenFaWithMarkers'_withMarkers.fa')
 
-        refGenGTFwithMarkers=$(basename !{Fasta} | sed 's/.*//g')
+        refGenGTFwithMarkers=$(basename !{Fasta} | sed 's/[.].*//g')
         refGenGTFwithMarkers=$(echo $refGenGTFwithMarkers'_withMarkers.gtf')
 
         cat !{Fasta} !{markerFastaPath} > $refGenFaWithMarkers
-        cat !{GTF} !{markerGTF} > $refGenGTFwithMarkers
+        cat !{GTF} !{addToGTF} > $refGenGTFwithMarkers
         '''
     }
 }
@@ -253,11 +266,9 @@ process indexGenomeForSTAR {
     # genomeParameters.txt, SA, sjdbList.fromGTF.out.tab,
     # chrNameLength.txt, exonInfo.tab, geneInfo.tab, Log.out, SAindex,
     # sjdbList.out.tab, chrName.txt, Genome, sjdbInfo.txt, transcriptInfo.tab
-
     # index with samtools
     samtools faidx "!{genomeFasta}"
     # created files :  *.fai
-
     # index picard
     dictFile=$(echo "!{genomeFasta}" | sed "s/fa$/dict/g")
     java -jar "!{picardJar}" CreateSequenceDictionary \
