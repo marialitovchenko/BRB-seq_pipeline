@@ -112,11 +112,75 @@ genomeTab
 // (genomeTab_download_flt) from the custom ones
 genomeTab_custom
     .filter{ it[2] && it[3] }
+    .map { item ->
+        Specie = item[0];
+        GenomeCode = item[1];
+        Fasta = genomePath.toString() + "/" + item[0] + "/" + 
+                item[1] + "/" + item[2];
+        GTF = genomePath.toString() +  "/" + item[0] + "/" + 
+                item[1] + "/" + item[3];
+        return [ Specie, GenomeCode, Fasta, GTF ] 
+    }
     .set{ genomeTab_custom_flt }
 
 genomeTab_download
     .filter{ !it[2] && !it[3] }
     .set{ genomeTab_download_flt }
+
+/* ----------------------------------------------------------------------------
+* Download the genome if user wants new specie/version which we don't have
+*----------------------------------------------------------------------------*/
+process downloadGenome {
+    publishDir "${genomePath}/${Specie}/${GenomeCode}",
+                mode: 'copy', overwrite: true
+
+    input:
+    tuple Specie, GenomeCode, Fasta, GTF from genomeTab_download_flt
+
+    output:
+    tuple Specie, GenomeCode, "*.fa", 
+          "*.gtf" optional true into genomes_ensembl
+
+    shell:
+    '''
+    # Download genome from UCSC
+    wget !{goldenPath}!{GenomeCode}/bigZips/!{GenomeCode}.fa.gz
+    gunzip !{GenomeCode}.fa.gz
+
+    # Download gene annotation file
+    urlBase=!{goldenPath}!{GenomeCode}/bigZips/genes/!{GenomeCode}
+    # the best to use with UCSC genome is refGene, but some species don't
+    # have it. In That case one needs to try other annotations
+    annoTypes=(refGene ensGene ncbiRefSeq)
+    # will try until something is downloaded
+    wget "$urlBase".refGene.gtf.gz || continue
+    if test -f !{GenomeCode}.refGene.gtf.gz; then
+        gunzip !{GenomeCode}.refGene.gtf.gz
+    else
+        wget "$urlBase".ensGene.gtf.gz || continue
+        if test -f !{GenomeCode}.ensGene.gtf.gz; then
+            gunzip !{GenomeCode}.ensGene.gtf.gz
+        else
+            wget "$urlBase".ncbiRefSeq.gtf.gz || continue
+            if test -f !{GenomeCode}.ncbiRefSeq.gtf.gz; then
+                gunzip !{GenomeCode}.ncbiRefSeq.gtf.gz
+            fi
+        fi
+    fi
+    '''
+}
+
+/* ----------------------------------------------------------------------------
+* Put downloaded genomes and custom ones into one channel
+*----------------------------------------------------------------------------*/
+genomes_ensembl
+    .mix(genomeTab_custom_flt)
+    .flatMap()
+    .collate( 4 )
+    .set{ allGenomes }
+
+// divide genomes on the ones we need to add marker to and don't
+allGenomes.into{ withMarker; noMarker}
 
 /* ----------------------------------------------------------------------------
 * [Optional] create custom GTF for markers fasta
@@ -156,85 +220,25 @@ if( markerFastaPath != file('.') ) {
 }
 
 /* ----------------------------------------------------------------------------
-* Download the genome if user wants new specie/version which we don't have
-*----------------------------------------------------------------------------*/
-process downloadGenome {
-    publishDir "${genomePath}/${Specie}/${GenomeCode}",
-                mode: 'copy', overwrite: true
-
-    input:
-    tuple Specie, GenomeCode, Fasta, GTF from genomeTab_download_flt
-
-    output:
-    tuple Specie, GenomeCode, "*.fa", 
-          "*.gtf" optional true into genomes_ensembl
-
-    shell:
-    '''
-    # if both are null: this is the case to download from ENSEMBL
-    if [ !{Fasta} = "null" ] && [ !{GTF} = "null" ]; then
-        # Download genome from UCSC
-        wget !{goldenPath}!{GenomeCode}/bigZips/!{GenomeCode}.fa.gz
-        gunzip !{GenomeCode}.fa.gz
-
-        # Download gene annotation file
-        urlBase=!{goldenPath}!{GenomeCode}/bigZips/genes/!{GenomeCode}
-        # the best to use with UCSC genome is refGene, but some species don't
-        # have it. In That case one needs to try other annotations
-        annoTypes=(refGene ensGene ncbiRefSeq)
-        # will try until something is downloaded
-        wget "$urlBase".refGene.gtf.gz || continue
-        if test -f !{GenomeCode}.refGene.gtf.gz; then
-            gunzip !{GenomeCode}.refGene.gtf.gz
-        else
-            wget "$urlBase".ensGene.gtf.gz || continue
-            if test -f !{GenomeCode}.ensGene.gtf.gz; then
-                gunzip !{GenomeCode}.ensGene.gtf.gz
-            else
-                wget "$urlBase".ncbiRefSeq.gtf.gz || continue
-                if test -f !{GenomeCode}.ncbiRefSeq.gtf.gz; then
-                    gunzip !{GenomeCode}.ncbiRefSeq.gtf.gz
-                fi
-            fi
-        fi
-    fi
-    '''
-}
-
-genomeTab_custom_flt
-    .map { item ->
-        Specie = item[0];
-        GenomeCode = item[1];
-        Fasta = genomePath.toString() + "/" + item[0] + "/" + 
-                item[1] + "/" + item[2];
-        GTF = genomePath.toString() +  "/" + item[0] + "/" + 
-                item[1] + "/" + item[3];
-        return [ Specie, GenomeCode, Fasta, GTF ] 
-    }
-    .set{genomeTab_custom_flt_remodel}
-
-// using of concat allows to wait for the download finish, if needed
-genomes_ensembl
-    .combine(genomeTab_custom_flt_remodel)
-    .flatMap()
-    .collate( 4 )
-    .combine( markerGTF )
-    .set{ allGenomes }
-
-/* ----------------------------------------------------------------------------
-* [Optional] create custom GTF for markers fasta
+* [Optional] add custom GTF for markers to the fasta of reference genome
 *----------------------------------------------------------------------------*/
 if( markerFastaPath != file('.') ) {
+    
+    withMarker
+        .combine( markerGTF )
+        .set{ withMarkerUpdated }
+
      process addMarkerToRefGen {
         echo true
+
         input:
-        tuple Specie, GenomeCode, Fasta, GTF, addToGTF from allGenomes
+        tuple Specie, GenomeCode, Fasta, GTF, addToGTF from withMarkerUpdated
+
+        output:
+        tuple Specie, GenomeCode, "*.fa", "*.gtf" into withMarkerToIndex
 
         shell:
         '''
-        echo !{Fasta}
-        echo basename !{Fasta}
-        echo 's/.*//g'
         refGenFaWithMarkers=$(basename !{Fasta} | sed 's/[.].*//g')
         refGenFaWithMarkers=$(echo $refGenFaWithMarkers'_withMarkers.fa')
 
@@ -245,6 +249,14 @@ if( markerFastaPath != file('.') ) {
         cat !{GTF} !{addToGTF} > $refGenGTFwithMarkers
         '''
     }
+}
+
+if( markerFastaPath != file('.') ) {
+    withMarkerToIndex
+        .set{genomesToIndex}
+} else {
+    noMarker
+        .set{genomesToIndex}
 }
 
 /* ----------------------------------------------------------------------------
@@ -276,3 +288,4 @@ process indexGenomeForSTAR {
     # created files: *.dict
     '''
 }
+
