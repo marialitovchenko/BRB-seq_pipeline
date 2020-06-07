@@ -169,8 +169,8 @@ sampleTabCh
 process trimReads {
     label 'low_memory'
 
-    publishDir "${outputDir}/trimmed",  mode: 'copy', pattern: '*_val_*.fq.gz',
-               overwrite: true
+    publishDir "${outputDir}/trimmed/${LibraryID}/${SampleID}",  
+    		   mode: 'copy', pattern: '*_val_*.fq.gz', overwrite: true
 
     input:
     tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, 
