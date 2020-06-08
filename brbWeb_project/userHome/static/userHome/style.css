@@ -196,6 +196,11 @@ p, span {
   font-size: 30px;
 }
 
+#UI h3 {
+  margin: 20px 0 20px 0;
+  font-size: 30px;
+}
+
 #UI .btn-new-project {
   float: left;
   text-transform: uppercase;

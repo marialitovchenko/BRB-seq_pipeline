@@ -22,6 +22,8 @@
                                         <th>Run ID</th>
                                         <th>Library ID</th>
                                         <th>Sample name</th>
+                                        <th>R1 length</th>
+                                        <th>Barcode - UMI pattern</th>
                                         <th>Specie</th>
                                         <th>Genome version</th>
                                         <th></th>
@@ -34,6 +36,8 @@
                                         <td>{{ seqLib.RunID }}</td>
                                         <td>{{ seqLib.LibraryID }}</td>
                                         <td>{{ seqLib.SampleID }}</td>
+                                        <td>{{ seqLib.R1len }}</td>
+                                        <td>{{ seqLib.BU_ptrn }}</td>
                                         <td>{{ seqLib.specie }}</td>
                                         <td>{{ seqLib.genome }}</td>
                                         <td><a class="update-project" href="{{project.get_absolute_url}}">{{ project.name }}</td>
