@@ -223,3 +223,15 @@ p, span {
   color: #FFC857;
   text-decoration: none;
 }
+
+#UI .user-pic {
+  border-radius: 100%;
+  display: flex;
+  flex: 0 0 150px;
+  margin: 20px 20px 20px 0;
+}
+
+#UI .user-pic img {
+  height: 100%;
+}
+
