@@ -35,8 +35,7 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
 
 	def form_valid(self, form):
 		form.instance.author = self.request.user
-		render(request, 'SeqLibrary-create', context)
-		#return super().form_valid(form)
+		return super().form_valid(form)
 
 class ProjectUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 	model = Project
@@ -102,8 +101,10 @@ def SeqLibrary_upload(request, project_pk):
 			RunID = column[0],
 			LibraryID = column[1],
 			SampleID = column[2],
-			specie = get_object_or_404(Specie, name = column[3]),
-			genome = get_object_or_404(GenomeVersion, version = column[4])
+			R1len = column[3],
+			BU_ptrn = column[4],
+			specie = get_object_or_404(Specie, name = column[5]),
+			genome = get_object_or_404(GenomeVersion, version = column[6])
 		)
 		
 	context = {}

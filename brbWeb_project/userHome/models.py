@@ -36,6 +36,8 @@ class SeqLibrary(models.Model):
 	RunID = models.CharField(max_length = 100)
 	LibraryID = models.CharField(max_length = 100)
 	SampleID = models.CharField(max_length = 100)
+	R1len = models.CharField(max_length = 100, null = True)
+	BU_ptrn = models.CharField(max_length = 100, null = True)
 	specie = models.ForeignKey(Specie, null = True, on_delete = models.SET_NULL)
 	genome = models.ForeignKey(GenomeVersion, null = True, on_delete = models.SET_NULL)
 
@@ -92,62 +94,56 @@ class TrimGaloreParams(models.Model):
 
 class STARParams(models.Model):
 	project = models.ForeignKey(Project, null = True, on_delete = models.CASCADE)
-	runRNGseed
-
-
-
-runRNGseed
-genomeChrBinNbits
-genomeSAindexNbases
-genomeSAsparseD
-genomeSuffixLengthMax
-sjdbFileChrStartEnd
-sjdbGTFfile
-sjdbGTFchrPrefix
-sjdbGTFfeatureExon
-sjdbGTFtagExonParentTranscript
-sjdbGTFtagExonParentGene
-sjdbOverhang
-sjdbScore
-sjdbInsertSave
-varVCFfile
-
-
-readMapNumber
-readMatesLengthsIn
-readStrand
-clip3pNbases
-clip5pNbases
-clip3pAdapterSeq
-clip3pAdapterMMp
-clip3pAfterAdapterNbases
-outReadsUnmapped
-outFilterType
-outFilterMultimapScoreRange
-outFilterMultimapNmax
-outFilterMismatchNmax
-outFilterMismatchNoverLmax
-outFilterMismatchNoverReadLmax
-outFilterScoreMin
-outFilterScoreMinOverLread
-outFilterIntronMotifs
-outFilterIntronStrands
-outSJfilterReads
-outSJfilterOverhangMin
-outSJfilterCountUniqueMin
-outSJfilterCountTotalMin
-outSJfilterDistToOtherSJmin
-outSJfilterIntronMaxVsReadN
-scoreGap
-scoreGapNoncan
-scoreGapGCAG
-scoreGapATAC
-scoreGenomicLengthLog2scale
-scoreDelOpen
-scoreDelBase
-scoreInsOpen
-scoreInsBase
-scoreStitchSJshift
-seedSearchStartLmax
-seedSearchStartLmaxOverLread
-seedSearchLmax
+	runRNGseed = models.CharField(max_length = 100)
+	genomeChrBinNbits  = models.CharField(max_length = 100)
+	genomeSAindexNbases = models.CharField(max_length = 100)
+	genomeSAsparseD  = models.CharField(max_length = 100)
+	genomeSuffixLengthMax  = models.CharField(max_length = 100)
+	sjdbFileChrStartEnd  = models.CharField(max_length = 100)
+	sjdbGTFfile = models.CharField(max_length = 100)
+	sjdbGTFchrPrefix = models.CharField(max_length = 100)
+	sjdbGTFfeatureExon = models.CharField(max_length = 100)
+	sjdbGTFtagExonParentTranscript  = models.CharField(max_length = 100)
+	sjdbGTFtagExonParentGene  = models.CharField(max_length = 100)
+	sjdbOverhang  = models.CharField(max_length = 100)
+	sjdbScore  = models.CharField(max_length = 100)
+	sjdbInsertSave  = models.CharField(max_length = 100)
+	varVCFfile  = models.CharField(max_length = 100)
+	readMapNumber  = models.CharField(max_length = 100)
+	readMatesLengthsIn  = models.CharField(max_length = 100)
+	readStrand  = models.CharField(max_length = 100)
+	clip3pNbases  = models.CharField(max_length = 100)
+	clip5pNbases  = models.CharField(max_length = 100)
+	clip3pAdapterSeq  = ''
+	clip3pAdapterMMp  = models.CharField(max_length = 100)
+	clip3pAfterAdapterNbases  = models.CharField(max_length = 100)
+	outReadsUnmapped  = models.CharField(max_length = 100)
+	outFilterType  = models.CharField(max_length = 100)
+	outFilterMultimapScoreRange  = models.CharField(max_length = 100)
+	outFilterMultimapNmax  = models.CharField(max_length = 100)
+	outFilterMismatchNmax  = models.CharField(max_length = 100)
+	outFilterMismatchNoverLmax  = models.CharField(max_length = 100)
+	outFilterMismatchNoverReadLmax  = models.CharField(max_length = 100)
+	outFilterScoreMin  = models.CharField(max_length = 100)
+	outFilterScoreMinOverLread  = models.CharField(max_length = 100)
+	outFilterIntronMotifs  = models.CharField(max_length = 100)
+	outFilterIntronStrands  = models.CharField(max_length = 100)
+	outSJfilterReads  = models.CharField(max_length = 100)
+	outSJfilterOverhangMin  = models.CharField(max_length = 100)
+	outSJfilterCountUniqueMin  = models.CharField(max_length = 100)
+	outSJfilterCountTotalMin  = models.CharField(max_length = 100)
+	outSJfilterDistToOtherSJmin  = models.CharField(max_length = 100)
+	outSJfilterIntronMaxVsReadN  = models.CharField(max_length = 100)
+	scoreGap  = models.CharField(max_length = 100)
+	scoreGapNoncan  = models.CharField(max_length = 100)
+	scoreGapGCAG  = models.CharField(max_length = 100)
+	scoreGapATAC  = models.CharField(max_length = 100)
+	scoreGenomicLengthLog2scale  = models.CharField(max_length = 100)
+	scoreDelOpen  = models.CharField(max_length = 100)
+	scoreDelBase  = models.CharField(max_length = 100)
+	scoreInsOpen  = models.CharField(max_length = 100)
+	scoreInsBase  = models.CharField(max_length = 100)
+	scoreStitchSJshift  = models.CharField(max_length = 100)
+	seedSearchStartLmax  = models.CharField(max_length = 100)
+	seedSearchStartLmaxOverLread  = models.CharField(max_length = 100)
+	seedSearchLmax = models.CharField(max_length = 100)
