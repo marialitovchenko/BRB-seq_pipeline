@@ -9,7 +9,7 @@ def helpMessage() {
 
     Usage:
     The \033[1;91mtypical\033[0m command for running the pipeline is as follows:
-    nextflow forTest.nf \033[1;91m--inputTab\033[0m table.csv \\
+    nextflow step2_QC_to_counts.nf \033[1;91m--inputTab\033[0m table.csv \\
                         \033[1;91m--FQdir\033[0m fqDir \\
                         \033[1;91m--genomeDir\033[0m allGenomes \\
                         \033[1;91m--outputDir\033[0m theResult
@@ -19,7 +19,7 @@ def helpMessage() {
     nextflow forTest.nf --inputTab table.csv
 
     to put the pipeline into \033[1;91mbackground\033[0m mode:
-    nextflow forTest.nf \033[1;91m--inputTab\033[0m table.csv \\
+    nextflow step2_QC_to_counts.nf \033[1;91m--inputTab\033[0m table.csv \\
                         \033[1;91m--FQdir\033[0m fqDir \\
                         \033[1;91m--genomeDir\033[0m allGenomes \\
                         \033[1;91m--outputDir\033[0m theResult \\
@@ -164,22 +164,61 @@ sampleTabCh
     .set{ sampleTab }
 
 /* ----------------------------------------------------------------------------
+* Perform QC check
+*----------------------------------------------------------------------------*/
+process qcCheck {
+    label 'low_memory'
+
+    input:
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie,
+          Genome from sampleTab
+
+    output:
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie,
+          Genome into qcFiles
+
+    shell:
+    '''
+    # perform quality check on original fastq
+    # full paths for R1 and R2
+    R1path=$(find !{userDir}'/'!{RunID} -type f | grep !{LibraryID} | \
+             grep !{SampleID} | grep !{params.R1code} | \
+             grep "!{params.fastqExtens}")
+    R2path=$(find !{userDir}'/'!{RunID} -type f | grep !{LibraryID} | \
+             grep !{SampleID} | grep !{params.R2code} | \
+             grep "!{params.fastqExtens}")
+    fastqc $R1path $R2path
+    # As fastqc produced files are located in the sam folder as fastq reads, we
+    # have to retrieve fastqc results manually
+    fastqcRes=$(find !{userDir}'/'!{RunID} -type f | grep !{LibraryID} | \
+                grep !{SampleID} | grep -E "zip|html")
+    # target dir
+    targetDir=!{outputDir}"/fastQC/"!{LibraryID}"/"!{SampleID}
+    mkdir -p $targetDir
+    mv $fastqcRes $targetDir
+    '''
+}
+
+/* ----------------------------------------------------------------------------
 * Trim reads by quality and adapterss with trimgalore
 *----------------------------------------------------------------------------*/
 process trimReads {
     label 'low_memory'
 
-    publishDir "${outputDir}/trimmed/${LibraryID}/${SampleID}",  
-    		   mode: 'copy', pattern: '*_val_*.fq.gz', overwrite: true
+    publishDir "${outputDir}/trimmed/${LibraryID}/${SampleID}",
+                   mode: 'copy', pattern: '*_val_*.fq.gz', overwrite: true
+    publishDir "${outputDir}/trimmed/${LibraryID}/${SampleID}",
+                   mode: 'copy', pattern: '*.{txt,zip,html}', overwrite: true
 
     input:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, 
-          Genome from sampleTab
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie,
+          Genome from qcFiles
 
     output:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, 
-          "${SampleID}_val_1.fq.gz", 
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome,
+          "${SampleID}_val_1.fq.gz",
           "${SampleID}_val_2.fq.gz" into trimmedFiles
+    tuple path("*.txt"), path("*.html"), path("*.zip") into trimQCfiles
 
     shell:
     '''
@@ -191,7 +230,7 @@ process trimReads {
              grep !{SampleID} | grep !{params.R2code} | \
              grep "!{params.fastqExtens}")
     # perform trimming with trim galore
-    trim_galore --paired $R1path $R2path --length !{R1len} \
+    trim_galore --paired $R1path $R2path --length !{R1len} --fastqc \
                 --basename !{SampleID} !{params.trimGalore_allParams}
     '''
 }
