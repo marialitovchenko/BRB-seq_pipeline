@@ -2,29 +2,173 @@
 title: "Data analysis report"
 author: "by Alithea Genomics"
 date: "6/17/2020"
-output: html_document
+fontsize: 20pt 
+output: 
+  html_document:
+    toc: true # table of content true
+    toc_depth: 3  # upto three depths of headings (specified by #, ## and ###)
+    number_sections: true # number sections at each table header
+params:
+  args: inputArgs
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r markdown_setup, include = FALSE}
+knitr::opts_chunk$set(echo = F)
+inputArgs <- c('test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt',
+               'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt',
+               'test_input/mapStatsTab.csv')
+names(inputArgs) <- c('fastqcR1', 'fastqcR2', 'mapStats')
 ```
 
-## R Markdown
+```{r setup_and_functions, include = FALSE}
+library(data.table)
+library(DT)
+library(ggrepel)
+library(ggplot2)
+library(ggpubr)
+library(ggsignif)
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+# plotting theme
+mashaGgplot2Theme <- list(
+  theme_classic(base_size = 12) +
+    theme(axis.line.x = element_line(colour = 'black', size = 0.5,
+                                     linetype = 'solid'),
+          axis.text.x = element_text(colour = 'black', size = 12),
+          axis.line.y = element_line(colour = 'black', size = 0.5,
+                                     linetype ='solid'),
+          axis.text.y = element_text(colour = 'black', size = 12),
+          strip.background = element_blank())
+)
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+# colors
+colorCode <- c("mapped to mult. loci" = '#FFBABA', 
+               "NOT mapped - mismatches" = '#C48484', 
+               'NOT mapped - too short' = '#991D1D',
+               'NOT mapped - other' = '#730202', 
+               'mapped to too many loci' = 'black',
+               "uniquely mapped" = "#0C8954")
 
-```{r cars}
-summary(cars)
+#' readFastQCsection
+#' Reads a part of the fastqc report TXT file and converts it to data table
+#' @param filePath path to the TXT file
+#' @param sectionName name of the section you want to be read, i.e. 
+#'                    '>>Per base sequence quality' or '>>Adapter Content'
+readFastQCsection <- function(filePath, sectionName) {
+  # connection to the file
+  connect <- file(filePath, open = "r")
+  # read ALL lines of the file, luckily it's not many
+  allLines <- readLines(connect)
+  # indicates if result vector containing line corresponding to section of 
+  # interest needs to be recorded into result variable
+  startFilling <- F
+  result <- c()
+  for (oneLine in allLines){
+    if (grepl(sectionName, oneLine)) {
+      startFilling <- T
+      next
+    } 
+    if (startFilling & grepl('>>END_MODULE', oneLine)) {
+      startFilling <- F
+    }
+    if (startFilling) {
+      result <- c(result, oneLine)
+    }
+  }
+  close(connect)
+  
+  # split by tab
+  result <- sapply(result, function(x) strsplit(x, '\t'))
+  names(result) <- NULL
+  # convert to data table
+  result <- do.call(rbind, result)
+  colnames(result) <- result[1, ]
+  colnames(result)[1] <- gsub("^#", "", colnames(result)[1]) 
+  result <- result[-1, ]
+  result <- as.data.table(result)
+  result <- as.data.table(apply(result, 2, as.numeric))
+
+  result
+}
+
+#' plotPerBaseQuality
+#' Plots per base quality of the read, just like seen in FASTQC report
+#' @param dtToPlot data table to plot, result of readFastQCsection
+#' @param plotTitle title of the plot
+#' @return ggplot
+plotPerBaseQuality <- function(dtToPlot, plotTitle = '') {
+  redArea <- data.frame(x1 = 0, x2 = max(dtToPlot$Base), y1 = 0, y2 = 20)
+  yelArea <- data.frame(x1 = 0, x2 = max(dtToPlot$Base), y1 = 20, y2 = 28)
+  greenArea <- data.frame(x1 = 0, x2 = max(dtToPlot$Base), y1 = 28, y2 = 40)
+  result <- ggplot(dtToPlot, aes(x = Base, y = Median)) + 
+    geom_point(shape = 95) + 
+    geom_errorbar(aes(ymin = `10th Percentile`, 
+                      ymax = `90th Percentile`), width=.2,
+                   position=position_dodge(.9)) +
+    geom_line(aes(x = Base, y = Mean), color = 'blue') + 
+    geom_rect(data = redArea, inherit.aes = F, fill = "red",  alpha = 0.2,
+              mapping = aes(xmin = x1, xmax = x2, ymin = y1, ymax = y2)) +
+    geom_rect(data = yelArea, inherit.aes = F, fill = "yellow",  alpha = 0.2,
+              mapping = aes(xmin = x1, xmax = x2, ymin = y1, ymax = y2)) +
+    geom_rect(data = greenArea, inherit.aes = F, fill = "green",  alpha = 0.2,
+              mapping = aes(xmin = x1, xmax = x2, ymin = y1, ymax = y2)) +
+    scale_x_continuous(breaks = seq(0, max(dtToPlot$Base), 1)) + 
+    scale_y_continuous(breaks = seq(0, 40, 1)) +
+    xlab('Quality score') + ylab('Position in the read, bp') +
+    ggtitle(plotTitle) + mashaGgplot2Theme
+  result
+}
+
+#' plotAdapterContent
+#' Plots adapter content in the read, just like seen in FASTQC report
+#' @param dtToPlot data table to plot, result of readFastQCsection
+#' @param plotTitle title of the plot
+#' @return ggplot
+plotAdapterContent <- function(dtToPlot, plotTitle = '') {
+  dtToPlot <- melt(copy(dtToPlot), 'Position')
+  result <- ggplot(dtToPlot, aes(x = Position, y = value, color = variable)) +
+    geom_line() +
+    scale_color_manual(values = c('red', 'blue', 'green', 'black', 'magenta'))+
+    scale_x_continuous(breaks = seq(0, max(adapters_R1$Position), 1)) + 
+    scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 10)) +
+    xlab('Position in read') + ylab('% Adapter') +
+    theme(legend.position = "topright") + labs(color = "Adapter") +
+    ggtitle(plotTitle) + mashaGgplot2Theme
+  result
+}
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r readInput, include = FALSE}
+# per base sequencing quality for R1
+perBaseQC_R1 <- readFastQCsection(inputArgs['fastqcR1'], 
+                                  '>>Per base sequence quality')
+# per base sequencing quality for R2
+perBaseQC_R2 <- readFastQCsection(inputArgs['fastqcR2'], 
+                                  '>>Per base sequence quality')
+# adapter contamination for R1
+adapters_R1 <- readFastQCsection(inputArgs['fastqcR1'], '>>Adapter Content')
+# adapter contamination for R2
+adapters_R2 <- readFastQCsection(inputArgs['fastqcR2'], '>>Adapter Content')
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# Quality control of the raw sequencing data
+## Per-base sequence quality
+The plot below displays quality scores across read length for read 1 (barcodes)
+and read 2 (actual RNA).
+
+Bad sequence quality
+most likely caused by the sequencing machine failure
+or tagmentation
+
+```{r perBaseQC, fig.height = 8, fig.width = 12, fig.align = "left"}
+plotPerBaseQuality(perBaseQC_R1, 'Per base quality for R1')
+plotPerBaseQuality(perBaseQC_R2, 'Per base quality for R2')
+```
+
+## Adapter content
+```{r adapterQC, fig.height = 8, fig.width = 12, fig.align = "left"}
+plotAdapterContent(adapters_R1, 'Adapter contamination in R1')
+plotAdapterContent(adapters_R2, 'Adapter contamination in R2')
+```
+
+# Mapping statistics
+
