@@ -243,6 +243,30 @@ or tagmentation
 ```{r perBaseQC, fig.height = 8, fig.width = 12, fig.align = "left"}
 plotPerBaseQuality(perBaseQC_R1, 'Per base quality for R1')
 plotPerBaseQuality(perBaseQC_R2, 'Per base quality for R2')
+
+fig <- plot_ly(data = perBaseQC_R1) %>% 
+  add_trace(x = ~Base, y = ~Median, type = "scatter", mode = "markers", 
+            marker = list(symbol = 'line-ew-open', color = 'black'),
+            error_y = ~list(symmetric = F, color = 'black',
+                            arrayminus = Median - `10th Percentile`,
+                            array = `90th Percentile` - Median)) %>% 
+  add_trace(x = ~Base, y = ~Mean, type="scatter", mode = "lines",
+            line = list(color = 'blue'))
+
+layout(fig, title = 'Highlighting with Rectangles', showlegend = FALSE,
+       xaxis = list(title = 'Position in the read, bp', dtick = 1,
+                    showgrid = F),
+       yaxis = list(title = 'Sequencing quality', dtick = 1, showgrid = F),
+       shapes = list(
+         list(type = "rect", fillcolor = "red", line = list(color = "red"), opacity = 0.3,
+              x0 = 0, x1 = 20, xref = "x", y0 = 0, y1 = 20, yref = "y"),
+        list(type = "rect", fillcolor = "yellow", line = list(color = "yellow"),
+             opacity = 0.2, x0 = 0, x1 = 20, xref = "x", y0 = 20, y1 = 28,
+             yref = "y"),
+        list(type = "rect", fillcolor = "green", line = list(color = "green"),
+             opacity = 0.2, x0 = 0, x1 = 20, xref = "x", y0 = 28, y1 = 40, 
+             yref = "y")),
+       font = list(family = "Helvetica", size = 12))
 ```
 
 ## Adapter content
