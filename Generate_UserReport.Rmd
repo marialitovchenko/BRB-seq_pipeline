@@ -15,9 +15,14 @@ params:
 ```{r markdown_setup, include = FALSE}
 knitr::opts_chunk$set(echo = F)
 inputArgs <- c('test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt',
-               'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt',
+               'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt', 
+               'test_input/BRBseq_v3_plate_1_S25_R1_001.fastq.gz_trimming_report.txt',
+               'test_input/BRBseq_v3_plate_1_S25_R2_001.fastq.gz_trimming_report.txt',
+               'test_input/BRBseq_v3_plate_1_S25_val_1_fastqc/fastqc_data.txt',
+               'test_input/BRBseq_v3_plate_1_S25_val_2_fastqc/fastqc_data.txt',
                'test_input/mapStatsTab.csv')
-names(inputArgs) <- c('fastqcR1', 'fastqcR2', 'mapStats')
+names(inputArgs) <- c('fastqcR1', 'fastqcR2', 'trimInfoR1', 'trimInfoR2',
+                      'fastqcTrimR1', 'fastqcTrimR2', 'mapStats')
 ```
 
 ```{r setup_and_functions, include = FALSE}
@@ -135,22 +140,98 @@ plotAdapterContent <- function(dtToPlot, plotTitle = '') {
     ggtitle(plotTitle) + mashaGgplot2Theme
   result
 }
+
+#' readInTrimmingInfo
+#' Reads in and extracts needed information from trimming report produced by
+#' TrimGalore
+#' @param filePath path to the trimming report
+#' @return data table with 2 columns
+readInTrimmingInfo <- function(filePath) {
+  # lines of interest
+  LOI <- c('Adapter sequence', 'Total reads processed', 
+           'Reads with adapters', 'Reads written',
+           'Total basepairs processed', 'Quality-trimmed',
+           'Total written',
+           'Number of sequence pairs removed because')
+  LOI <- paste(LOI, collapse = "|")
+
+  # connection to the file
+  connect <- file(filePath, open = "r")
+  # read ALL lines of the file, luckily it's not many
+  allLines <- readLines(connect)
+  # indicates if result vector containing line corresponding to section of 
+  # interest needs to be recorded into result variable
+  startFilling <- F
+  result <- c()
+  for (oneLine in allLines){
+    if (grepl(LOI, oneLine)) {
+      result <- c(result, oneLine)
+    }
+  }
+  close(connect)
+  
+  # convert to table
+  result <- sapply(result, function(x) strsplit(x, ':'))
+  names(result) <- NULL
+  result <- do.call(rbind, result)
+  result[, 2] <- gsub('^ +', '', result[, 2])
+  result <- as.data.frame(result)
+  colnames(result) <- c('Property', 'Value')
+  result
+}
 ```
 
 ```{r readInput, include = FALSE}
+# number of raw reads in R1 and R2
+basicStats_R1 <- readFastQCsection(inputArgs['fastqcR1'], '>>Basic Statistics')
+basicStats_R2 <- readFastQCsection(inputArgs['fastqcR2'], '>>Basic Statistics')
+basicStats <- data.frame(R1 = c(basicStats_R1$Value[4],basicStats_R1$Value[6],
+                                basicStats_R1$Value[7]),
+                         R2 = c(basicStats_R2$Value[4],basicStats_R2$Value[6],
+                                basicStats_R2$Value[7]))
+rownames(basicStats) <- c('Number of reads', 'Read length', 'GC percentage')
+
 # per base sequencing quality for R1
 perBaseQC_R1 <- readFastQCsection(inputArgs['fastqcR1'], 
                                   '>>Per base sequence quality')
 # per base sequencing quality for R2
 perBaseQC_R2 <- readFastQCsection(inputArgs['fastqcR2'], 
                                   '>>Per base sequence quality')
+
 # adapter contamination for R1
 adapters_R1 <- readFastQCsection(inputArgs['fastqcR1'], '>>Adapter Content')
 # adapter contamination for R2
 adapters_R2 <- readFastQCsection(inputArgs['fastqcR2'], '>>Adapter Content')
+
+# trimming report for R1
+trimInf_R1 <- as.data.table(readInTrimmingInfo(inputArgs['trimInfoR1']))
+# trimming report for R2
+trimInf_R2 <- as.data.table(readInTrimmingInfo(inputArgs['trimInfoR2']))
+
+# per base sequencing quality for R1, after trimming
+perBaseQCtrim_R1 <- readFastQCsection(inputArgs['fastqcTrimR1'], 
+                                     '>>Per base sequence quality')
+# per base sequencing quality for R2
+perBaseQCtrim_R2 <- readFastQCsection(inputArgs['fastqcTrimR2'], 
+                                     '>>Per base sequence quality')
+
+# adapter contamination for R1
+adaptersTrim_R1 <- readFastQCsection(inputArgs['fastqcTrimR1'],
+                                     '>>Adapter Content')
+# adapter contamination for R2
+adaptersTrim_R2 <- readFastQCsection(inputArgs['fastqcTrimR2'], 
+                                     '>>Adapter Content')
+
 ```
 
 # Quality control of the raw sequencing data
+## General information
+
+```{r generalInfo, results = 'asis'}
+library(knitr)
+kable(basicStats, caption = 'Information about sequencing')
+```
+
 ## Per-base sequence quality
 The plot below displays quality scores across read length for read 1 (barcodes)
 and read 2 (actual RNA).
@@ -170,5 +251,29 @@ plotAdapterContent(adapters_R1, 'Adapter contamination in R1')
 plotAdapterContent(adapters_R2, 'Adapter contamination in R2')
 ```
 
-# Mapping statistics
+# Trimming results
+## Table
+```{r trimmingTable, results = 'asis'}
+trimInf_R1 <- as.data.table(readInTrimmingInfo(inputArgs['trimInfoR1']))
+setnames(trimInf_R1, 'Value', 'R1')
+setkey(trimInf_R1, 'Property')
+trimInf_R2 <- as.data.table(readInTrimmingInfo(inputArgs['trimInfoR2']))
+setnames(trimInf_R2, 'Value', 'R2')
+setkey(trimInf_R2, 'Property')
+trimInf <- merge(trimInf_R1, trimInf_R2, all = T)
 
+library(knitr)
+kable(trimInf, caption = 'Trimming statistics')
+```
+
+## Per-base sequence quality
+```{r perBaseTrimQC, fig.height = 8, fig.width = 12, fig.align = "left"}
+plotPerBaseQuality(perBaseQCtrim_R1, 'Per base quality for R1')
+plotPerBaseQuality(perBaseQCtrim_R2, 'Per base quality for R2')
+```
+
+## Adapter content
+```{r adapterTrimQC, fig.height = 8, fig.width = 12, fig.align = "left"}
+plotAdapterContent(adaptersTrim_R1, 'Adapter contamination in R1')
+plotAdapterContent(adaptersTrim_R2, 'Adapter contamination in R2')
+```
