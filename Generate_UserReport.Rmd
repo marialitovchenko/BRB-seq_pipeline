@@ -32,6 +32,8 @@ library(ggrepel)
 library(ggplot2)
 library(ggpubr)
 library(ggsignif)
+library(plotly)
+library(plyr)
 
 # plotting theme
 mashaGgplot2Theme <- list(
@@ -95,12 +97,13 @@ readFastQCsection <- function(filePath, sectionName) {
   result
 }
 
-#' plotPerBaseQuality
-#' Plots per base quality of the read, just like seen in FASTQC report
+#' plotPerBaseQuality_ggplot2
+#' Plots per base quality of the read, just like seen in FASTQC report 
+#' with ggplot2
 #' @param dtToPlot data table to plot, result of readFastQCsection
 #' @param plotTitle title of the plot
 #' @return ggplot
-plotPerBaseQuality <- function(dtToPlot, plotTitle = '') {
+plotPerBaseQuality_ggplot2 <- function(dtToPlot, plotTitle = '') {
   redArea <- data.frame(x1 = 0, x2 = max(dtToPlot$Base), y1 = 0, y2 = 20)
   yelArea <- data.frame(x1 = 0, x2 = max(dtToPlot$Base), y1 = 20, y2 = 28)
   greenArea <- data.frame(x1 = 0, x2 = max(dtToPlot$Base), y1 = 28, y2 = 40)
@@ -123,12 +126,53 @@ plotPerBaseQuality <- function(dtToPlot, plotTitle = '') {
   result
 }
 
-#' plotAdapterContent
-#' Plots adapter content in the read, just like seen in FASTQC report
+#' plotPerBaseQuality_ggplot2
+#' Plots per base quality of the read, just like seen in FASTQC report 
+#' with plotly
 #' @param dtToPlot data table to plot, result of readFastQCsection
 #' @param plotTitle title of the plot
-#' @return ggplot
-plotAdapterContent <- function(dtToPlot, plotTitle = '') {
+#' @return plotly
+plotPerBaseQuality_plotly <- function(dtToPlot, plotTitle = '') {
+  fig <- plot_ly(data = dtToPlot) %>% 
+                add_trace(x = ~Base, y = ~Median, type = "scatter", 
+                          mode = "markers", 
+                marker = list(symbol = 'line-ew-open', color = 'black'),
+                error_y = ~list(symmetric = F, color = 'black',
+                                arrayminus = Median - `10th Percentile`,
+                                array = `90th Percentile` - Median)) %>% 
+                add_trace(x = ~Base, y = ~Mean, type="scatter", mode = "lines",
+                line = list(color = 'blue'))
+  fig <- fig %>%
+         layout(fig, title = plotTitle, showlegend = F,
+                xaxis = list(title = 'Position in the read, bp', dtick = 1,
+                             range = c(0, max(dtToPlot$Base)), showgrid = F),
+                yaxis = list(title = 'Sequencing quality', dtick = 1, 
+                             range = c(0, 
+                                       max(c(40, dtToPlot$`90th Percentile`))),
+                             showgrid = F),
+                shapes = list(list(type = "rect", fillcolor = "red",
+                                   line = list(color = "red"), opacity = 0.3,
+                                   x0 = 0, x1 = max(dtToPlot$Base), xref = "x",
+                                   y0 = 0, y1 = 20, yref = "y"),
+                              list(type = "rect", fillcolor = "yellow", 
+                                   line = list(color = "yellow"),
+                                   opacity = 0.2, x0 = 0, x1 = max(dtToPlot$Base), 
+                                   xref = "x", y0 = 20, y1 = 28, yref = "y"),
+                              list(type = "rect", fillcolor = "green", 
+                                   line = list(color = "green"),
+                                   opacity = 0.2, x0 = 0, x1 = max(dtToPlot$Base),
+                                   xref = "x", y0 = 28, y1 = 40, yref = "y")),
+                font = list(family = "Helvetica", size = 12))
+  fig
+}
+
+#' plotAdapterContent_ggplot2
+#' Plots adapter content in the read, just like seen in FASTQC report with use
+#' of ggplot2 
+#' @param dtToPlot data table to plot, result of readFastQCsection
+#' @param plotTitle title of the plot
+#' @return ggplot2
+plotAdapterContent_ggplot2 <- function(dtToPlot, plotTitle = '') {
   dtToPlot <- melt(copy(dtToPlot), 'Position')
   result <- ggplot(dtToPlot, aes(x = Position, y = value, color = variable)) +
     geom_line() +
@@ -139,6 +183,28 @@ plotAdapterContent <- function(dtToPlot, plotTitle = '') {
     theme(legend.position = "topright") + labs(color = "Adapter") +
     ggtitle(plotTitle) + mashaGgplot2Theme
   result
+}
+
+#' plotAdapterContent_plotly
+#' Plots adapter content in the read, just like seen in FASTQC report with use
+#' of plotly
+#' @param dtToPlot data table to plot, result of readFastQCsection
+#' @param plotTitle title of the plot
+#' @return plotly
+plotAdapterContent_plotly <- function(dtToPlot, plotTitle = '') {
+  dtToPlot <- melt(copy(dtToPlot), 'Position')
+  fig <- plot_ly(data = dtToPlot) %>% 
+    add_trace(x = ~Position, y = ~value, type = "scatter", 
+              color = ~variable, mode = "lines")
+  fig <- fig %>%
+    layout(fig, title = plotTitle, 
+           xaxis = list(title = 'Position in read, bp', 
+                        dtick = 1, range = c(0, max(dtToPlot$Position)),
+                        showgrid = F),
+           yaxis = list(title = 'Adapter %', dtick = 10,
+                        range = c(0, 100), showgrid = F),
+           font = list(family = "Helvetica", size = 12))
+  fig
 }
 
 #' readInTrimmingInfo
@@ -232,7 +298,7 @@ library(knitr)
 kable(basicStats, caption = 'Information about sequencing')
 ```
 
-## Per-base sequence quality
+## Per-base sequence quality {.tabset}
 The plot below displays quality scores across read length for read 1 (barcodes)
 and read 2 (actual RNA).
 
@@ -240,40 +306,30 @@ Bad sequence quality
 most likely caused by the sequencing machine failure
 or tagmentation
 
-```{r perBaseQC, fig.height = 8, fig.width = 12, fig.align = "left"}
-plotPerBaseQuality(perBaseQC_R1, 'Per base quality for R1')
-plotPerBaseQuality(perBaseQC_R2, 'Per base quality for R2')
-
-fig <- plot_ly(data = perBaseQC_R1) %>% 
-  add_trace(x = ~Base, y = ~Median, type = "scatter", mode = "markers", 
-            marker = list(symbol = 'line-ew-open', color = 'black'),
-            error_y = ~list(symmetric = F, color = 'black',
-                            arrayminus = Median - `10th Percentile`,
-                            array = `90th Percentile` - Median)) %>% 
-  add_trace(x = ~Base, y = ~Mean, type="scatter", mode = "lines",
-            line = list(color = 'blue'))
-
-layout(fig, title = 'Highlighting with Rectangles', showlegend = FALSE,
-       xaxis = list(title = 'Position in the read, bp', dtick = 1,
-                    showgrid = F),
-       yaxis = list(title = 'Sequencing quality', dtick = 1, showgrid = F),
-       shapes = list(
-         list(type = "rect", fillcolor = "red", line = list(color = "red"), opacity = 0.3,
-              x0 = 0, x1 = 20, xref = "x", y0 = 0, y1 = 20, yref = "y"),
-        list(type = "rect", fillcolor = "yellow", line = list(color = "yellow"),
-             opacity = 0.2, x0 = 0, x1 = 20, xref = "x", y0 = 20, y1 = 28,
-             yref = "y"),
-        list(type = "rect", fillcolor = "green", line = list(color = "green"),
-             opacity = 0.2, x0 = 0, x1 = 20, xref = "x", y0 = 28, y1 = 40, 
-             yref = "y")),
-       font = list(family = "Helvetica", size = 12))
+###R1
+```{r perBaseQC_R1, fig.height = 6, fig.width = 8, fig.align = "left"}
+plotPerBaseQuality_plotly(perBaseQC_R1, 'Per base quality for R1')
 ```
 
-## Adapter content
-```{r adapterQC, fig.height = 8, fig.width = 12, fig.align = "left"}
-plotAdapterContent(adapters_R1, 'Adapter contamination in R1')
-plotAdapterContent(adapters_R2, 'Adapter contamination in R2')
+###R2
+```{r perBaseQC_R2, fig.height = 6, fig.width = 8, fig.align = "left"}
+plotPerBaseQuality_plotly(perBaseQC_R2, 'Per base quality for R2')
 ```
+
+## Adapter content{.tabset}
+
+Adapter contamination
+
+###R1
+```{r adapterQC_R1, fig.height = 6, fig.width = 8, fig.align = "left"}
+plotAdapterContent_plotly(adapters_R1, 'Adapter contamination in R1')
+```
+
+###R2
+```{r adapterQC_R2, fig.height = 6, fig.width = 8, fig.align = "left"}
+plotAdapterContent_plotly(adapters_R2, 'Adapter contamination in R2')
+```
+
 
 # Trimming results
 ## Table
@@ -290,14 +346,27 @@ library(knitr)
 kable(trimInf, caption = 'Trimming statistics')
 ```
 
-## Per-base sequence quality
-```{r perBaseTrimQC, fig.height = 8, fig.width = 12, fig.align = "left"}
-plotPerBaseQuality(perBaseQCtrim_R1, 'Per base quality for R1')
-plotPerBaseQuality(perBaseQCtrim_R2, 'Per base quality for R2')
+## Per-base sequence quality {.tabset}
+After trimming
+
+### R1 
+```{r perBaseTrimQC_R1, fig.height = 6, fig.width = 8, fig.align = "left"}
+plotPerBaseQuality_plotly(perBaseQCtrim_R1, 'Per base quality for R1')
 ```
 
-## Adapter content
-```{r adapterTrimQC, fig.height = 8, fig.width = 12, fig.align = "left"}
-plotAdapterContent(adaptersTrim_R1, 'Adapter contamination in R1')
-plotAdapterContent(adaptersTrim_R2, 'Adapter contamination in R2')
+### R2
+```{r perBaseTrimQC_R2, fig.height = 6, fig.width = 8, fig.align = "left"}
+plotPerBaseQuality_plotly(perBaseQCtrim_R2, 'Per base quality for R2')
+```
+
+## Adapter content {.tabset}
+
+### R1 
+```{r adapterTrimQC_R1, fig.height = 6, fig.width = 8, fig.align = "left"}
+plotAdapterContent_plotly(adaptersTrim_R1, 'Adapter contamination in R2')
+```
+
+### R2
+```{r adapterTrimQC_R2, fig.height = 6, fig.width = 8, fig.align = "left"}
+plotAdapterContent_plotly(adaptersTrim_R2, 'Adapter contamination in R1')
 ```
