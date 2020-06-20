@@ -98,6 +98,7 @@ mapStatsTab = outputDir + "/mapStatsTab.csv"
 
 // technical directory, contains all support files, like scripts, jars, etc
 params.techDir = 'techDir'
+params.pairfq_lite = file(params.techDir + '/pairfq_lite')
 params.brbseqTools = file(params.techDir + '/BRBseqTools.1.5.jar')
 params.barcodefile = file(params.techDir + '/barcodes_v3.txt')
 
@@ -191,7 +192,7 @@ process qcCheck {
     # As fastqc produced files are located in the sam folder as fastq reads, we
     # have to retrieve fastqc results manually
     fastqcRes=$(find !{userDir}'/'!{RunID} -type f | grep !{LibraryID} | \
-                grep !{SampleID} | grep -E "zip|html")
+                grep !{SampleID} | grep -E "zip")
     # target dir
     targetDir=!{outputDir}"/fastQC/"!{LibraryID}"/"!{SampleID}
     mkdir -p $targetDir
@@ -208,7 +209,7 @@ process trimReads {
     publishDir "${outputDir}/trimmed/${LibraryID}/${SampleID}",
                    mode: 'copy', pattern: '*_val_*.fq.gz', overwrite: true
     publishDir "${outputDir}/trimmed/${LibraryID}/${SampleID}",
-                   mode: 'copy', pattern: '*.{txt,zip,html}', overwrite: true
+                   mode: 'copy', pattern: '*.{txt,zip}', overwrite: true
 
     input:
     tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie,
@@ -216,9 +217,9 @@ process trimReads {
 
     output:
     tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome,
-          "${SampleID}_val_1.fq.gz",
-          "${SampleID}_val_2.fq.gz" into trimmedFiles
-    tuple path("*.txt"), path("*.html"), path("*.zip") into trimQCfiles
+          "${SampleID}*_val_1.fq.gz",
+          "${SampleID}*_val_2.fq.gz" into trimmedFiles
+    tuple path("*.txt"), path("*.zip") into trimQCfiles
 
     shell:
     '''
@@ -229,9 +230,26 @@ process trimReads {
     R2path=$(find !{userDir}'/'!{RunID} -type f | grep !{LibraryID} | \
              grep !{SampleID} | grep !{params.R2code} | \
              grep "!{params.fastqExtens}")
-    # perform trimming with trim galore
-    trim_galore --paired $R1path $R2path --length !{R1len} --fastqc \
+    # perform trimming with trim galore ONLY ON R2 because we lose a lot of 
+    # reads if we trim R1
+    trim_galore $R2path --length !{R1len} \
                 --basename !{SampleID} !{params.trimGalore_allParams}
+    # while trimming, some of the reads in R2 became shorter than 20 (or 21) bp
+    # we need to remove corresponding reads from R1 too
+    R2trimmed=$(find . -type f | grep !{SampleID} | \
+                grep '_trimmed.fq.gz')
+    R1result=$(basename $R1path | sed 's/[.].*//g')
+    R1result=$(echo $R1result"_val_1.fq")
+    R2result=$(basename $R2path | sed 's/[.].*//g')
+    R2result=$(echo $R2result"_val_2.fq")
+    perl !{params.pairfq_lite} makepairs -f $R1path -r $R2trimmed -fp $R1result \
+                         -rp $R2result -fs 'R1_singletone.fq' \
+                         -rs 'R2_singletone.fq'
+    rm R1_singletone.fq R2_singletone.fq
+    gzip $R1result
+    gzip $R2result
+    fastqc $R1result".gz"
+    fastqc $R2result".gz"
     '''
 }
 
@@ -258,7 +276,7 @@ process demultiplex {
     label 'mid_memory'
 
     publishDir "${outputDir}/demultiplexed/${LibraryID}/${SampleID}",
-                mode: 'copy', pattern: '*.fastq.gz', overwrite: true
+                mode: 'copy', pattern: '*.{fastq.gz,txt}', overwrite: true
 
     input:
     tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, 
@@ -267,6 +285,7 @@ process demultiplex {
     output:
     tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, 
           trimmedR1, trimmedR2, path('*.fastq.gz') into demultiplexBundle
+    path('*.txt') into demultiplexStats
 
     shell:
     '''
