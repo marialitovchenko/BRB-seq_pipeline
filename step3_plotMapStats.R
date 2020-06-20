@@ -148,9 +148,9 @@ listOfPlotsMapStats <- function(dataTabWide, idCols, runIDsToPlot,
     # select columns with raw statistics values (integer)
     rawStats <- dataToPlot[, !colnames(dataToPlot) %in% idCols, with = F]
     # convert to percentages
-    percStats <- apply(rawStats, 2, function(x) x / rawStats$`total reads`)
-    percStats <- 100 * as.data.table(percStats)
-    percStats[, 1] <- rawStats$`total reads`
+    percStats <- apply(rawStats, 2, function(x) 100 * x / rawStats$`total reads`)
+    percStats <- as.data.table(percStats)
+    percStats[, 1] <- as.double(rawStats$`total reads`)
     # merge with the input table
     setnames(percStats, colnames(percStats)[-1], 
              paste('%', colnames(percStats)[-1]))
@@ -379,11 +379,15 @@ server <- function(input, output, session) {
     content = function(file) {
       fieldSep = switch(input$tabSepar, "Tab" = '\t', 
                         "Space" = ' ',"Comma" = ',')
-      dataToWrite <- mapData()
-      dataToWrite <- dataToWrite[RunID %in% input$runsToDisplay]
-      dataToWrite <- dataToWrite[LibraryID %in% input$libsToDisplay]
-      dataToWrite <- dataToWrite[SubSample %in% input$samplesToDisplay]
-      write.table(dataToWrite, file, append = F, quote = F, sep = fieldSep,
+      selectedDT <- mapData()
+      selectedDT <- selectedDT[RunID %in% input$runsToDisplay &
+                                 LibraryID %in% input$libsToDisplay]
+      if (identical(input$samplesToDisplay, 'All')) {
+        selectedDT <- selectedDT
+      } else {
+        selectedDT <- selectedDT[SubSample %in% input$samplesToDisplay]
+      }
+      write.table(selectedDT, file, append = F, quote = F, sep = fieldSep,
                   row.names = F, col.names = T)
     })
   
@@ -427,13 +431,14 @@ server <- function(input, output, session) {
                                             input$rawPlotFileFormat,
                                             sep = ".")},
                     content = function(file) {
-                              if(input$rawPlotFileFormat == "png") {
-                                png(file, width = input$rawPlotW, 
-                                    height = input$rawPlotH, units = 'px')
-                              } else {
-                                pdf(file, width = input$rawPlotW / 72, 
-                                    height = input$rawPlotH / 72)
-                              }
+                      plotWidth = input$rawPlotW / 72 
+                      plotHeigth = input$rawPlotH / 72
+                      plotUnits = NULL
+                      if(input$rawPlotFileFormat == "png") {
+                        plotDevice = "png"
+                      } else {
+                        plotDevice = 'pdf'
+                      }
                       # select data to plot 
                       selectedDT <- mapData()
                       selectedDT <- selectedDT[RunID %in% input$runsToDisplay &
@@ -448,7 +453,7 @@ server <- function(input, output, session) {
                       plotLabels <- plotLabels[!duplicated(plotLabels), ]
                       plotLabels <- paste(plotLabels$RunID, plotLabels$LibraryID,
                                           sep = ': ')
-                      print(ggarrange(plotlist = listOfPlotsMapStats(mapData(),
+                      toFile <- ggarrange(plotlist = listOfPlotsMapStats(mapData(),
                                                                      idColNames,
                                                                      input$runsToDisplay,
                                                                      'Raw values', 
@@ -458,8 +463,11 @@ server <- function(input, output, session) {
                                       common.legend = T,
                                       legend = 'bottom', 
                                       nrow = length(input$runsToDisplay),
-                                      ncol = length(input$libsToDisplay)))
-                      dev.off()}) 
+                                      ncol = length(input$libsToDisplay))
+                      ggsave(file, toFile, device = plotDevice, 
+                             width = plotWidth, height = plotHeigth, 
+                             units = plotUnits)
+                      })
   
   # Tab with percentage plot
   output$percPlot <- renderPlot({
@@ -493,53 +501,43 @@ server <- function(input, output, session) {
                                                   input$percPlotFileFormat,
                                                   sep = ".")},
                      content = function(file) {
-                               if(input$percPlotFileFormat == "png") {
-                                 png(file, width = input$percPlotW,
-                                     height = input$percPlotH, units = 'px')
-                               } else {
-                                 pdf(file, width = input$percPlotW / 72,
-                                     height = input$percPlotH / 72)
-                               }
+                       plotWidth = input$percPlotW / 72 
+                       plotHeigth = input$percPlotH / 72
+                       plotUnits = NULL
+                       if(input$percPlotFileFormat == "png") {
+                         plotDevice = "png"
+                       } else {
+                         plotDevice = 'pdf'
+                       }
                        # select data to plot 
                        selectedDT <- mapData()
                        selectedDT <- selectedDT[RunID %in% input$runsToDisplay &
-                                                  LibraryID %in% input$libsToDisplay]
+                                                LibraryID %in% input$libsToDisplay]
                        if (identical(input$samplesToDisplay, 'All')) {
                          selectedDT <- selectedDT
                        } else {
                          selectedDT <- selectedDT[SubSample %in% input$samplesToDisplay]
                        }
-                       # make plots
+                       # calculate labels
                        plotLabels <- selectedDT[, .(RunID, LibraryID)]
                        plotLabels <- plotLabels[!duplicated(plotLabels), ]
                        plotLabels <- paste(plotLabels$RunID, plotLabels$LibraryID,
                                            sep = ': ')
-                      print(ggarrange(plotlist = listOfPlotsMapStats(mapData(),
-                                                                     idColNames,
-                                                                     input$runsToDisplay,
-                                                                     'Percentage', 
-                                                                     input$percSortBy,
-                                                                     colorCode),
-                                       labels = plotLabels, 
-                                       common.legend = T,
-                                       legend = 'bottom', 
-                                       nrow = length(input$runsToDisplay),
-                                       ncol = length(input$libsToDisplay)))
-                       dev.off()}) 
+                       toFile <- ggarrange(plotlist = listOfPlotsMapStats(mapData(),
+                                                                          idColNames,
+                                                                          input$runsToDisplay,
+                                                                          'Percentage', 
+                                                                          input$rawSortBy,
+                                                                          colorCode),
+                                           labels = plotLabels, 
+                                           common.legend = T,
+                                           legend = 'bottom', 
+                                           nrow = length(input$runsToDisplay),
+                                           ncol = length(input$libsToDisplay))
+                       ggsave(file, toFile, device = plotDevice, 
+                              width = plotWidth, height = plotHeigth, 
+                              units = plotUnits)
+                     })
 }
-
-dashboardBody(
-  carousel(
-    id = "mycarousel",
-    carouselItem(
-      caption = "Item 1",
-      tags$img(src = "http://placehold.it/900x500/3c8dbc/ffffff&text=I+Love+Bootstrap")
-    ),
-    carouselItem(
-      caption = "Item 2",
-      tags$img(src = "http://placehold.it/900x500/39CCCC/ffffff&text=I+Love+Bootstrap")
-    )
-  )
-),
 
 shinyApp(ui, server)
