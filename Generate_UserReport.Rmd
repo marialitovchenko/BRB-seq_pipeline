@@ -16,13 +16,10 @@ params:
 knitr::opts_chunk$set(echo = F)
 inputArgs <- c('test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt',
                'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt', 
-               'test_input/BRBseq_v3_plate_1_S25_R1_001.fastq.gz_trimming_report.txt',
                'test_input/BRBseq_v3_plate_1_S25_R2_001.fastq.gz_trimming_report.txt',
                'test_input/BRBseq_v3_plate_1_S25_val_1_fastqc/fastqc_data.txt',
-               'test_input/BRBseq_v3_plate_1_S25_val_2_fastqc/fastqc_data.txt',
                'test_input/mapStatsTab.csv')
-names(inputArgs) <- c('fastqcR1', 'fastqcR2', 'trimInfoR1', 'trimInfoR2',
-                      'fastqcTrimR1', 'fastqcTrimR2', 'mapStats')
+names(inputArgs) <- c('fastqcR1', 'fastqcR2', 'trimInfoR2', 'fastqcTrimR2', 'mapStats')
 ```
 
 ```{r setup_and_functions, include = FALSE}
@@ -269,22 +266,12 @@ adapters_R1 <- readFastQCsection(inputArgs['fastqcR1'], '>>Adapter Content')
 # adapter contamination for R2
 adapters_R2 <- readFastQCsection(inputArgs['fastqcR2'], '>>Adapter Content')
 
-# trimming report for R1
-trimInf_R1 <- as.data.table(readInTrimmingInfo(inputArgs['trimInfoR1']))
 # trimming report for R2
 trimInf_R2 <- as.data.table(readInTrimmingInfo(inputArgs['trimInfoR2']))
-
-# per base sequencing quality for R1, after trimming
-perBaseQCtrim_R1 <- readFastQCsection(inputArgs['fastqcTrimR1'], 
-                                     '>>Per base sequence quality')
-# per base sequencing quality for R2
+# per base sequencing quality for R2 after trimming
 perBaseQCtrim_R2 <- readFastQCsection(inputArgs['fastqcTrimR2'], 
                                      '>>Per base sequence quality')
-
-# adapter contamination for R1
-adaptersTrim_R1 <- readFastQCsection(inputArgs['fastqcTrimR1'],
-                                     '>>Adapter Content')
-# adapter contamination for R2
+# adapter contamination for R2 after trimming
 adaptersTrim_R2 <- readFastQCsection(inputArgs['fastqcTrimR2'], 
                                      '>>Adapter Content')
 
@@ -332,39 +319,27 @@ plotAdapterContent_plotly(adapters_R2, 'Adapter contamination in R2')
 
 
 # Trimming results
+
+>Important note: R1 is not trimmed. 
+
 ## Table
 ```{r trimmingTable, results = 'asis'}
-trimInf_R1 <- as.data.table(readInTrimmingInfo(inputArgs['trimInfoR1']))
-setnames(trimInf_R1, 'Value', 'R1')
-setkey(trimInf_R1, 'Property')
 trimInf_R2 <- as.data.table(readInTrimmingInfo(inputArgs['trimInfoR2']))
 setnames(trimInf_R2, 'Value', 'R2')
-setkey(trimInf_R2, 'Property')
-trimInf <- merge(trimInf_R1, trimInf_R2, all = T)
 
 library(knitr)
-kable(trimInf, caption = 'Trimming statistics')
+kable(trimInf_R2, caption = 'Trimming statistics')
 ```
 
-## Per-base sequence quality {.tabset}
+## Per-base sequence quality
 After trimming
-
-### R1 
-```{r perBaseTrimQC_R1, fig.height = 6, fig.width = 8, fig.align = "left"}
-plotPerBaseQuality_plotly(perBaseQCtrim_R1, 'Per base quality for R1')
-```
 
 ### R2
 ```{r perBaseTrimQC_R2, fig.height = 6, fig.width = 8, fig.align = "left"}
 plotPerBaseQuality_plotly(perBaseQCtrim_R2, 'Per base quality for R2')
 ```
 
-## Adapter content {.tabset}
-
-### R1 
-```{r adapterTrimQC_R1, fig.height = 6, fig.width = 8, fig.align = "left"}
-plotAdapterContent_plotly(adaptersTrim_R1, 'Adapter contamination in R2')
-```
+## Adapter content 
 
 ### R2
 ```{r adapterTrimQC_R2, fig.height = 6, fig.width = 8, fig.align = "left"}
