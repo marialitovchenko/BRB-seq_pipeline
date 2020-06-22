@@ -18,8 +18,9 @@ inputArgs <- c('test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plat
                'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt', 
                'test_input/BRBseq_v3_plate_1_S25_R2_001.fastq.gz_trimming_report.txt',
                'test_input/BRBseq_v3_plate_1_S25_val_1_fastqc/fastqc_data.txt',
-               'test_input/mapStatsTab.csv')
-names(inputArgs) <- c('fastqcR1', 'fastqcR2', 'trimInfoR2', 'fastqcTrimR2', 'mapStats')
+               'test_input/stats.txt', 'test_input/mapStatsTab.csv')
+names(inputArgs) <- c('fastqcR1', 'fastqcR2', 'trimInfoR2', 'fastqcTrimR2',
+                      'demultStats', 'mapStats')
 ```
 
 ```{r setup_and_functions, include = FALSE}
@@ -242,6 +243,100 @@ readInTrimmingInfo <- function(filePath) {
   colnames(result) <- c('Property', 'Value')
   result
 }
+
+#' readDemultiplexInfo
+#' Reads information from demultiplex statistics info file
+#' @param filePath path to the demultiplex statistics report
+#' @return list with two elements: Overview and PercPerBarcode
+readDemultiplexInfo <- function(filePath) {
+  # connection to the file
+  connect <- file(filePath, open = "r")
+  # read ALL lines of the file, luckily it's not many
+  allLines <- readLines(connect)
+  # indicates if result vector containing line corresponding to section of 
+  # interest needs to be recorded into result variable
+  startFilling <- F
+  result <- list('')
+  for (oneLine in allLines){
+    if (grepl('Demultiplexing Summary', oneLine)) {
+      startFilling <- T
+      itemToFillIn <- 1
+      next
+    }
+    if (grepl('Demultiplexing Details', oneLine)) {
+      startFilling <- T
+      result[[length(result) + 1]] <- ''
+      itemToFillIn <- 2
+      next
+    }
+    if (startFilling) {
+      result[[itemToFillIn]] <- c(result[[itemToFillIn]], oneLine)
+      if (grepl("Determined Barcodes", oneLine)) {
+        startFilling <- F
+      }
+    }
+  }
+  close(connect)
+  
+  # remove 1st item from every element of the list, it's empty
+  result <- lapply(result, function(x) x[-1])
+  # convert each element to data frame
+  result <- lapply(result, 
+                   function(x) sapply(x, function(y) strsplit(y, '\t')))
+  for (i in 1:length(result)) {
+    names(result[[i]]) <- NULL
+  }
+  result <- lapply(result, function(x) do.call(rbind, x))
+  for (i in 1:length(result)) {
+    colnames(result[[i]]) <- result[[i]][1, ]
+    result[[i]] <- result[[i]][-1, ]
+  }
+  result <- lapply(result, function(x) as.data.frame(x, stringsAsFactors = F))
+  # conver second and third columns to numbers
+  for (i in 1:length(result)) {
+    result[[i]][, 2] <- as.double(result[[i]][, 2])
+    result[[i]][, 3] <- as.double(result[[i]][, 3])
+  }
+  names(result) <- c('Overview', 'PercPerBarcode')
+  # add row and column position in plate
+  result[[2]]$PlateRow <- gsub('[0-9]+', '', result[[2]]$Barcode)
+  result[[2]]$PlateCol <- gsub('[A-Z]+', '', result[[2]]$Barcode)
+  
+  result
+}
+
+
+plotDemultipleStats <- function(dtToPlot, plotTitle) {
+  # data frame to dysplay values ordered by percentage
+  byPerc <- data.frame(x = dtToPlot$Barcode, y = dtToPlot$Percent, 
+                       stringsAsFactors = F)
+  byPerc <- byPerc[order(byPerc$y), ]
+  byPerc$x <- factor(byPerc$x, levels = byPerc$x)
+
+  # data frame to dysplay values ordered by name
+  byName <- data.frame(y = dtToPlot$Percent, 
+                       x = paste(dtToPlot$PlateRow, dtToPlot$PlateCol),
+                       stringsAsFactors = F)
+  byName <- byName[order(byName$x), ]
+  byName$x <- factor(byName$x, levels = byName$x)
+
+  # buttons
+  updatemenus <- list(
+  list(active = -1, type = "buttons",
+       buttons = list(
+         list(label = "Sort by value", method = "update",
+              args = list(list(visible = c(T, F)))),
+         list(label = "Sort by name",method = "update",
+              args = list(list(visible = c(F, T)))))))
+  
+  fig <- plot_ly() %>% 
+    add_trace(data = byPerc, x = ~x, y = ~y, type = "bar", visible = T) %>%
+    add_trace(data = byName, x = ~x, y = ~y, type = "bar", visible = F) %>%
+    layout(updatemenus = updatemenus, title = plotTitle, showlegend = F,
+           xaxis = list(title = 'Sample', dtick = 1))
+  
+  fig
+}
 ```
 
 ```{r readInput, include = FALSE}
@@ -266,7 +361,7 @@ adapters_R1 <- readFastQCsection(inputArgs['fastqcR1'], '>>Adapter Content')
 # adapter contamination for R2
 adapters_R2 <- readFastQCsection(inputArgs['fastqcR2'], '>>Adapter Content')
 
-# trimming report for R2
+# trimming report for R2 (R1 isn't trimmed)
 trimInf_R2 <- as.data.table(readInTrimmingInfo(inputArgs['trimInfoR2']))
 # per base sequencing quality for R2 after trimming
 perBaseQCtrim_R2 <- readFastQCsection(inputArgs['fastqcTrimR2'], 
@@ -275,6 +370,8 @@ perBaseQCtrim_R2 <- readFastQCsection(inputArgs['fastqcTrimR2'],
 adaptersTrim_R2 <- readFastQCsection(inputArgs['fastqcTrimR2'], 
                                      '>>Adapter Content')
 
+# statistics of demultiplexing
+demultiplexStats <- readDemultiplexInfo(inputArgs['demultStats'])
 ```
 
 # Quality control of the raw sequencing data
@@ -344,4 +441,16 @@ plotPerBaseQuality_plotly(perBaseQCtrim_R2, 'Per base quality for R2')
 ### R2
 ```{r adapterTrimQC_R2, fig.height = 6, fig.width = 8, fig.align = "left"}
 plotAdapterContent_plotly(adaptersTrim_R2, 'Adapter contamination in R1')
+```
+
+# Demultiplexing
+
+```{r demultiplexStats, results = "asis"}
+library(knitr)
+kable(demultiplexStats[[1]], caption = 'Overview of demultiplexing')
+```
+
+
+```{r demultiplexStatsPlot, fig.height = 8, fig.width = 14, fig.align = "left"}
+plotDemultipleStats(demultiplexStats[[2]], '')
 ```
