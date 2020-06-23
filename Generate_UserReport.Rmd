@@ -334,22 +334,25 @@ plotDemultipleStats_plotly <- function(dtToPlot, plotTitle) {
                        stringsAsFactors = F)
   byPerc <- byPerc[order(byPerc$x), ]
   byPerc$y <- factor(byPerc$y, levels = byPerc$y)
-
   # data frame to dysplay values ordered by name
-  byName <- data.frame(x = dtToPlot$Percent, 
-                       y = paste(dtToPlot$PlateRow, dtToPlot$PlateCol),
+  byName <- data.frame(x = dtToPlot$Percent, y = dtToPlot$Barcode,
                        stringsAsFactors = F)
-  byName <- byName[order(byName$y, decreasing = T), ]
-  byName$y <- factor(byName$y, levels = byName$y)
+  byName$y <- factor(byName$y, levels = sort(byName$y, decreasing = T))
 
   # buttons
+  yAxisform <- append(alitheaPlotlyAxis, list(title = 'Sample'))
+  yAxisREform <- append(yAxisform,
+                        list(categoryorder = "array",
+                             categoryarray = levels(byName$y)))
   updatemenus <- list(
   list(active = -1, type = "buttons",
        buttons = list(
          list(label = "Sort by value", method = "update",
-              args = list(list(visible = c(T, F)))),
-         list(label = "Sort by name",method = "update",
-              args = list(list(visible = c(F, T)))))))
+              args = list(list(visible = c(T, F)),
+                          list(yaxis = yAxisform))),
+         list(label = "Sort by name", method = "update",
+              args = list(list(visible = c(F, T)),
+                          list(yaxis = yAxisREform))))))
   
   fig <- plot_ly() %>% 
     add_trace(data = byPerc, x = ~x, y = ~y, type = "bar", visible = T,
@@ -360,9 +363,7 @@ plotDemultipleStats_plotly <- function(dtToPlot, plotTitle) {
            font = alitheaPlotlyFont,
            xaxis = append(alitheaPlotlyAxis,
                           list(title = '% of reads going to this sample',
-                               tick0 = 0, dtick = 1)),
-           yaxis = append(alitheaPlotlyAxis,
-                          list(title = 'Sample', tick0 = 0, dtick = 1)))
+                               tick0 = 0, dtick = 0.5)))
   
   fig
 }
@@ -387,6 +388,180 @@ plotDemultiplexPlate_plotly <- function(dtToPlot, plotTitle) {
            yaxis = append(alitheaPlotlyAxis,
                           list(title = '', tick0 = 0, dtick = 1,
                           autorange="reversed", showgrid = F)))
+  fig
+}
+
+# mapping statistics
+#' readMapStatTab
+#' Reads and formats one mapping stats table
+#' @param mappingStatsPath path to the file with mapping stats
+#' @return data table
+readMapStatTab <- function(mappingStatsPath) {
+  # Names of the columns
+  idColNames <- c('RunID', 'LibraryID', 'SampleID', 'Specie', 'Genome', 
+                  'SubSample')
+  statNames <- c(idColNames, 'total reads', 'uniquely mapped', 
+                 'mapped to mult. loci', 'mapped to too many loci',
+                 'NOT mapped - mismatches', 'NOT mapped - too short',
+                 'NOT mapped - other')
+  # read-in and assign column names
+  stats <- fread(mappingStatsPath, header = F, stringsAsFactors = F, fill = T)
+  setnames(stats, colnames(stats), statNames)
+  # for the subsample names, remove elements of the path from it, leaving just
+  # samples
+  stats[, SubSample := gsub('.*/', '', SubSample)]
+  stats[, SubSample := gsub('[.].*', '', SubSample)]
+  stats
+}
+
+#' sortByForBarPlot
+#' Sorts data table by the column which index was given. Converts it to data
+#' frame. All string columns will be converted to vectors
+#' @param dataTab data table with mapping statistics
+#' @param colIndexToSort integer, column index
+#' @return data frame
+sortByForBarPlot <- function(dataTab, colIndexToSort) {
+  # make a copy so we wouldn't change original object in case it's data table
+  dataTab <- copy(dataTab)
+  dataFr <- as.data.frame(dataTab)
+  
+  # order by the column of interest
+  dataFr <- dataFr[order(dataFr[, colIndexToSort]), ]
+  # these are the rest of the columns
+  dependentIndex <- setdiff(1:ncol(dataTab), colIndexToSort)
+  for (i in dependentIndex) {
+    # if coulumn is character: convert it to factor with levels corresponding
+    # to sorted column
+    if (class(dataFr[, i]) == 'character') {
+      dataFr[, i] <- factor(dataFr[, i], levels = unique(dataFr[, i]))
+    }
+  }
+  
+  dataFr
+}
+
+#' genVisibilityVectors
+#' Creates visibility vector for stacked mapping stats bar plot
+#' @param numbItems int, number of traces simultaneously dysplayed in each plot
+#' @param numbReps int, number of buttons
+#' @return list of vectors of length numbItems, numbReps. 
+#'         numbReps vectors in the list
+genVisibilityVectors <- function(numbItems, numbReps) {
+  # template vector, all false for now
+  tmpVect <- rep(F, numbItems * numbReps)
+  # sequence of where patches of T should start 
+  trueStarts <- seq(1, length(tmpVect), by = numbItems)
+  result <- list()
+  for (i in trueStarts) {
+    toAdd <- tmpVect
+    toAdd[i:(i+numbItems - 1)] <- T
+    result[[length(result) + 1]] <- toAdd
+  }
+  result
+}
+
+#' createButtons
+#' Creates switch buttons to switch between different order of mapping stats
+#' @param dataList list of data frame. Each should have just 2 columns
+#' @param statSortedBy character name of the column by which data was sorted
+#' @param visibilityList list of visibility for traces
+#' @return list, representing button
+createButtons <- function(dataList, statSortedBy, visibilityList) {
+  changedYaxisTickLabs <- dataList[[statSortedBy]][[statSortedBy]]$SubSample
+  changedYaxisTickLabs <- levels(changedYaxisTickLabs)
+  changedYaxis <- list(title = 'Sample', categoryorder = "array",
+                       categoryarray = changedYaxisTickLabs)
+  list(label = statSortedBy, method = "update",
+       args = list(list(visible = visibilityList),
+                   list(yaxis = append(alitheaPlotlyAxis,
+                                       changedYaxis))))
+  
+}
+
+#' addAllBarChartTraces
+#' Adds bar chart traces to plotly figure
+#' @param figToAdd plotly figure to which append traces
+#' @param dataList list of data frames
+#' @param statSortedBy character name of the column by which data was sorted
+#' @param plotColors named vector, colors for plot
+#' @param visibility true of false
+#' @return plotly figure
+addAllBarChartTraces <- function(figToAdd, dataList, statSortedBy, plotColors,
+                                 visibility = F) {
+  figToAdd <- figToAdd %>% 
+              add_trace(data = dataList[[statSortedBy]][[statSortedBy]],
+                        x = ~Value, y = ~SubSample, 
+                        type = 'bar', name = statSortedBy,
+                        marker = list(color = plotColors[statSortedBy]),
+                        visible = visibility)
+  
+  otherStats <- names(dataList[[statSortedBy]])
+  otherStats <- otherStats[otherStats != statSortedBy]
+  for (oneMapStat in otherStats) {
+    figToAdd <- figToAdd %>% 
+                add_trace(data = dataList[[statSortedBy]][[oneMapStat]],
+                          x = ~Value, y = ~SubSample, 
+                          type = 'bar', name = oneMapStat,
+                          marker = list(color = plotColors[oneMapStat]),
+                          visible = visibility)
+  }
+  figToAdd
+}
+
+#' plotMappingStats_plotly
+#' Plots mapping statistics
+#' @param dtToPlot, data table to plot
+#' @param plotTitle title of the plot
+#' @retun plotly
+plotMappingStats_plotly <- function(dtToPlot, plotTitle) {
+  # names of mapping characteristics
+  mapChars <- c("uniquely mapped", "mapped to mult. loci",
+                "mapped to too many loci", "NOT mapped - mismatches",
+                "NOT mapped - too short", "NOT mapped - other")
+  # indices of the characteristics in the mapping stats table
+  mapCharsInd <- match(mapChars, colnames(dtToPlot))
+
+  # for every mapping characteristics, sort the table according to it
+  dtList <- lapply(mapCharsInd, function(x) sortByForBarPlot(dtToPlot, x))
+  names(dtList) <- mapChars
+  # split each of the sorted by a mapping characteristic table on 
+  # length(mapChars) so every sub table has just 2 columns
+  dtList <- lapply(dtList, 
+                  function(x) lapply(mapChars,
+                                      function(y) x[, c('SubSample', y)]))
+  # give sub tables the same colnames, also give sub lists names by mapping
+  # chracteristic which they contain
+  for (i in 1:length(dtList)) {
+    names(dtList[[i]]) <- mapChars
+    for (j in 1:length(dtList[[i]])) {
+      colnames(dtList[[i]][[j]]) <- c('SubSample', 'Value')
+    }
+  }
+
+  # generate vilibility list
+  visiblList <- genVisibilityVectors(length(mapChars), length(mapChars))
+  names(visiblList) <- mapChars
+  
+  # generate list of buttons
+  buttonList <- lapply(mapChars,
+                       function(x) createButtons(dtList, x, visiblList[[x]]))
+  updatemenus <- list(list(active = -1, type = "buttons", 
+                           buttons = buttonList))
+
+  # add first view, visible by default
+  fig <- plot_ly()
+  fig <- addAllBarChartTraces(fig, dtList, names(dtList)[1], colorCode, 
+                              visibility = T)
+  # add following views
+  for (sortedBy in names(dtList)[-1]) {
+    fig <- addAllBarChartTraces(fig, dtList, sortedBy, colorCode,
+                                visibility = F)
+  }
+  # add buttons
+  fig <- fig %>% layout(updatemenus = updatemenus, title = plotTitle,
+                        yaxis = append(alitheaPlotlyAxis,
+                                       list(title = 'Sample')), 
+                        barmode = 'stack')
   fig
 }
 ```
@@ -424,6 +599,9 @@ adaptersTrim_R2 <- readFastQCsection(inputArgs['fastqcTrimR2'],
 
 # statistics of demultiplexing
 demultiplexStats <- readDemultiplexInfo(inputArgs['demultStats'])
+
+# mapping statistics
+mapStatTab <- readMapStatTab(inputArgs['mapStats'])
 ```
 
 # Quality control of the raw sequencing data
@@ -511,4 +689,10 @@ plotDemultipleStats_plotly(demultiplexStats[[2]], '% of reads per sample')
 ```{r demultiplexPlatePlot, fig.height = 6, fig.width = 8, fig.align = "left"}
 plotDemultiplexPlate_plotly(demultiplexStats[[2]], 
                             '% of reads per sample, plate view')
+```
+
+
+# Mapping
+```{r mapStatsPlot, fig.height = 6, fig.width = 8, fig.align = "left"}
+plotMappingStats_plotly(mapStatTab, 'Overview of mapping statistics')
 ```
