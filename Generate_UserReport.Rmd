@@ -3,11 +3,13 @@ title: "Data analysis report"
 author: "by Alithea Genomics"
 date: "6/17/2020"
 fontsize: 20pt 
-output: 
-  html_document:
-    toc: true # table of content true
-    toc_depth: 3  # upto three depths of headings (specified by #, ## and ###)
-    number_sections: true # number sections at each table header
+output:
+  rmdformats::readthedown:
+    self_contained: true
+    thumbnails: true
+    lightbox: false
+    gallery: false
+    highlight: tango
 params:
   args: inputArgs
 ---
@@ -32,9 +34,10 @@ library(ggpubr)
 library(ggsignif)
 library(plotly)
 library(plyr)
+library(prettydoc)
 
-# plotting theme
-mashaGgplot2Theme <- list(
+# ggplot2 plotting theme
+alitheaGgplot2Theme <- list(
   theme_classic(base_size = 12) +
     theme(axis.line.x = element_line(colour = 'black', size = 0.5,
                                      linetype = 'solid'),
@@ -45,7 +48,15 @@ mashaGgplot2Theme <- list(
           strip.background = element_blank())
 )
 
+# plotly plotting theme
+alitheaPlotlyAxis <- list(color = "black", 
+                          showticklabels = T, ticks = "outside", 
+                          showtickprefix = "all", ticklen = 6, tickwidth = 1)
+alitheaPlotlyFont <- list(color = "black", family = "Helvetica", size = 12)
+ 
+
 # colors
+basicColor <- '#556D7D'
 colorCode <- c("mapped to mult. loci" = '#FFBABA', 
                "NOT mapped - mismatches" = '#C48484', 
                'NOT mapped - too short' = '#991D1D',
@@ -120,7 +131,7 @@ plotPerBaseQuality_ggplot2 <- function(dtToPlot, plotTitle = '') {
     scale_x_continuous(breaks = seq(0, max(dtToPlot$Base), 1)) + 
     scale_y_continuous(breaks = seq(0, 40, 1)) +
     xlab('Quality score') + ylab('Position in the read, bp') +
-    ggtitle(plotTitle) + mashaGgplot2Theme
+    ggtitle(plotTitle) + alitheaGgplot2Theme
   result
 }
 
@@ -141,13 +152,19 @@ plotPerBaseQuality_plotly <- function(dtToPlot, plotTitle = '') {
                 add_trace(x = ~Base, y = ~Mean, type="scatter", mode = "lines",
                 line = list(color = 'blue'))
   fig <- fig %>%
-         layout(fig, title = plotTitle, showlegend = F,
-                xaxis = list(title = 'Position in the read, bp', dtick = 1,
-                             range = c(0, max(dtToPlot$Base)), showgrid = F),
-                yaxis = list(title = 'Sequencing quality', dtick = 1, 
-                             range = c(0, 
-                                       max(c(40, dtToPlot$`90th Percentile`))),
-                             showgrid = F),
+         layout(fig, title = plotTitle, showlegend = F, 
+                font = alitheaPlotlyFont,
+                xaxis = append(alitheaPlotlyAxis, 
+                               list(title = 'Position in the read, bp', 
+                                    tick0 = 1, dtick = 1,
+                                    range = c(0, max(dtToPlot$Base)), 
+                                    showgrid = F)),
+                yaxis = append(alitheaPlotlyAxis, 
+                               list(title = 'Sequencing quality', 
+                                    tick0 = 1, dtick = 1,
+                                    range = c(0, max(c(40, 
+                                              dtToPlot$`90th Percentile`))),
+                                    showgrid = F)),
                 shapes = list(list(type = "rect", fillcolor = "red",
                                    line = list(color = "red"), opacity = 0.3,
                                    x0 = 0, x1 = max(dtToPlot$Base), xref = "x",
@@ -159,8 +176,7 @@ plotPerBaseQuality_plotly <- function(dtToPlot, plotTitle = '') {
                               list(type = "rect", fillcolor = "green", 
                                    line = list(color = "green"),
                                    opacity = 0.2, x0 = 0, x1 = max(dtToPlot$Base),
-                                   xref = "x", y0 = 28, y1 = 40, yref = "y")),
-                font = list(family = "Helvetica", size = 12))
+                                   xref = "x", y0 = 28, y1 = 40, yref = "y")))
   fig
 }
 
@@ -179,7 +195,7 @@ plotAdapterContent_ggplot2 <- function(dtToPlot, plotTitle = '') {
     scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 10)) +
     xlab('Position in read') + ylab('% Adapter') +
     theme(legend.position = "topright") + labs(color = "Adapter") +
-    ggtitle(plotTitle) + mashaGgplot2Theme
+    ggtitle(plotTitle) + alitheaGgplot2Theme
   result
 }
 
@@ -195,13 +211,15 @@ plotAdapterContent_plotly <- function(dtToPlot, plotTitle = '') {
     add_trace(x = ~Position, y = ~value, type = "scatter", 
               color = ~variable, mode = "lines")
   fig <- fig %>%
-    layout(fig, title = plotTitle, 
-           xaxis = list(title = 'Position in read, bp', 
-                        dtick = 1, range = c(0, max(dtToPlot$Position)),
-                        showgrid = F),
-           yaxis = list(title = 'Adapter %', dtick = 10,
-                        range = c(0, 100), showgrid = F),
-           font = list(family = "Helvetica", size = 12))
+    layout(fig, title = plotTitle, font = alitheaPlotlyFont,
+           xaxis = append(alitheaPlotlyAxis,
+                         list(title = 'Position in read, bp', 
+                              tick0 = 1, dtick = 1,
+                              range = c(0, max(dtToPlot$Position)),
+                              showgrid = F)),
+           yaxis = append(alitheaPlotlyAxis,
+                          list(title = 'Adapter %', tick0 = 0, dtick = 10,
+                               range = c(0, 100), showgrid = F)))
   fig
 }
 
@@ -305,20 +323,24 @@ readDemultiplexInfo <- function(filePath) {
   result
 }
 
-
-plotDemultipleStats <- function(dtToPlot, plotTitle) {
+#' plotDemultipleStats
+#' Plots bar plot of demultiplexed statistics
+#' @param dtToPlot, data table to plot, result of readDemultiplexInfo(x)[[2]]
+#' @param plotTitle title of the plot
+#' @retun plotly
+plotDemultipleStats_plotly <- function(dtToPlot, plotTitle) {
   # data frame to dysplay values ordered by percentage
-  byPerc <- data.frame(x = dtToPlot$Barcode, y = dtToPlot$Percent, 
+  byPerc <- data.frame(x = dtToPlot$Percent, y = dtToPlot$Barcode, 
                        stringsAsFactors = F)
-  byPerc <- byPerc[order(byPerc$y), ]
-  byPerc$x <- factor(byPerc$x, levels = byPerc$x)
+  byPerc <- byPerc[order(byPerc$x), ]
+  byPerc$y <- factor(byPerc$y, levels = byPerc$y)
 
   # data frame to dysplay values ordered by name
-  byName <- data.frame(y = dtToPlot$Percent, 
-                       x = paste(dtToPlot$PlateRow, dtToPlot$PlateCol),
+  byName <- data.frame(x = dtToPlot$Percent, 
+                       y = paste(dtToPlot$PlateRow, dtToPlot$PlateCol),
                        stringsAsFactors = F)
-  byName <- byName[order(byName$x), ]
-  byName$x <- factor(byName$x, levels = byName$x)
+  byName <- byName[order(byName$y, decreasing = T), ]
+  byName$y <- factor(byName$y, levels = byName$y)
 
   # buttons
   updatemenus <- list(
@@ -330,10 +352,17 @@ plotDemultipleStats <- function(dtToPlot, plotTitle) {
               args = list(list(visible = c(F, T)))))))
   
   fig <- plot_ly() %>% 
-    add_trace(data = byPerc, x = ~x, y = ~y, type = "bar", visible = T) %>%
-    add_trace(data = byName, x = ~x, y = ~y, type = "bar", visible = F) %>%
+    add_trace(data = byPerc, x = ~x, y = ~y, type = "bar", visible = T,
+              marker = list(color = basicColor)) %>%
+    add_trace(data = byName, x = ~x, y = ~y, type = "bar", visible = F,
+              marker = list(color = basicColor)) %>%
     layout(updatemenus = updatemenus, title = plotTitle, showlegend = F,
-           xaxis = list(title = 'Sample', dtick = 1))
+           font = alitheaPlotlyFont,
+           xaxis = append(alitheaPlotlyAxis,
+                          list(title = '% of reads going to this sample',
+                               tick0 = 0, dtick = 1)),
+           yaxis = append(alitheaPlotlyAxis,
+                          list(title = 'Sample', tick0 = 0, dtick = 1)))
   
   fig
 }
@@ -451,6 +480,6 @@ kable(demultiplexStats[[1]], caption = 'Overview of demultiplexing')
 ```
 
 
-```{r demultiplexStatsPlot, fig.height = 8, fig.width = 14, fig.align = "left"}
-plotDemultipleStats(demultiplexStats[[2]], '')
+```{r demultiplexStatsPlot, fig.height = 12, fig.width = 10, fig.align = "left"}
+plotDemultipleStats_plotly(demultiplexStats[[2]], '% of reads per sample')
 ```
