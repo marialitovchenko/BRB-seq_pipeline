@@ -366,6 +366,29 @@ plotDemultipleStats_plotly <- function(dtToPlot, plotTitle) {
   
   fig
 }
+
+#' plotDemultiplexPlate_plotly
+#' Plots plate view of demultiplexing results
+#' @param dtToPlot, data table to plot, result of readDemultiplexInfo(x)[[2]]
+#' @param plotTitle title of the plot
+#' @retun plotly
+plotDemultiplexPlate_plotly <- function(dtToPlot, plotTitle) {
+  fig <- plot_ly() %>% 
+    add_trace(data = dtToPlot, x = ~PlateRow, y = ~PlateCol,
+              type = 'scatter', mode = 'markers', 
+              text = ~paste0(Percent, '%'),
+              marker = list(size = ~10 * Percent, color = basicColor,
+                            opacity = 1)) %>%
+    layout(title = plotTitle, showlegend = F,
+           font = alitheaPlotlyFont,
+           xaxis = append(alitheaPlotlyAxis,
+                          list(title = '', 
+                          tick0 = 0, dtick = 1, showgrid = F)),
+           yaxis = append(alitheaPlotlyAxis,
+                          list(title = '', tick0 = 0, dtick = 1,
+                          autorange="reversed", showgrid = F)))
+  fig
+}
 ```
 
 ```{r readInput, include = FALSE}
@@ -472,14 +495,20 @@ plotPerBaseQuality_plotly(perBaseQCtrim_R2, 'Per base quality for R2')
 plotAdapterContent_plotly(adaptersTrim_R2, 'Adapter contamination in R1')
 ```
 
-# Demultiplexing
+# Demultiplexing {.tabset}
 
 ```{r demultiplexStats, results = "asis"}
 library(knitr)
 kable(demultiplexStats[[1]], caption = 'Overview of demultiplexing')
 ```
 
-
+## Bar plot
 ```{r demultiplexStatsPlot, fig.height = 12, fig.width = 10, fig.align = "left"}
 plotDemultipleStats_plotly(demultiplexStats[[2]], '% of reads per sample')
+```
+
+## Plate view
+```{r demultiplexPlatePlot, fig.height = 6, fig.width = 8, fig.align = "left"}
+plotDemultiplexPlate_plotly(demultiplexStats[[2]], 
+                            '% of reads per sample, plate view')
 ```
