@@ -32,9 +32,10 @@ library(ggrepel)
 library(ggplot2)
 library(ggpubr)
 library(ggsignif)
+library(kableExtra)
+library(knitr)
 library(plotly)
 library(plyr)
-library(prettydoc)
 
 # ggplot2 plotting theme
 alitheaGgplot2Theme <- list(
@@ -414,6 +415,27 @@ readMapStatTab <- function(mappingStatsPath) {
   stats
 }
 
+#' convertMapStatsToPerc
+#' Converst mapping statistics to percentage
+#' @param tabMapStats table with mapping statistics
+#' @return data table
+convertMapStatsToPerc <- function(tabMapStats) {
+  # column names used as IDs
+  idCols <- c('RunID', 'LibraryID', 'SampleID', 'Specie', 'Genome', 
+                  'SubSample')
+  # select ID columns
+  tabMapStatsPerc <- tabMapStats[, idCols, with = F]
+  # select columns with raw statistics values (integer)
+  rawStats <- tabMapStats[, !colnames(tabMapStats) %in% idCols, with = F]
+  # convert to percentages
+  percStats <- apply(rawStats, 2, function(x) 100 * x / rawStats$`total reads`)
+  percStats <- as.data.table(percStats)
+  percStats[, 1] <- as.double(rawStats$`total reads`)
+  # merge with the input table
+  tabMapStatsPerc <- cbind(tabMapStatsPerc, percStats)
+  tabMapStatsPerc
+}
+
 #' sortByForBarPlot
 #' Sorts data table by the column which index was given. Converts it to data
 #' frame. All string columns will be converted to vectors
@@ -543,10 +565,16 @@ plotMappingStats_plotly <- function(dtToPlot, plotTitle) {
   names(visiblList) <- mapChars
   
   # generate list of buttons
-  buttonList <- lapply(mapChars,
+  buttonList <- lapply(mapChars, 
                        function(x) createButtons(dtList, x, visiblList[[x]]))
-  updatemenus <- list(list(active = -1, type = "buttons", 
+  updatemenus <- list(list(active = 0, direction = "down",
+                           xref = 'paper', yref = 'paper', x = 1.5, y = 0.96, 
                            buttons = buttonList))
+  
+  # generate button annotation
+  annot <- list(list(text = "Sort by:", x = 1.1, y = 1, xref='paper', 
+                   yref = 'paper', showarrow = F))
+
 
   # add first view, visible by default
   fig <- plot_ly()
@@ -561,7 +589,8 @@ plotMappingStats_plotly <- function(dtToPlot, plotTitle) {
   fig <- fig %>% layout(updatemenus = updatemenus, title = plotTitle,
                         yaxis = append(alitheaPlotlyAxis,
                                        list(title = 'Sample')), 
-                        barmode = 'stack')
+                        barmode = 'stack', annotations = annot, 
+                        legend = list(x = 100, y = 0))
   fig
 }
 ```
@@ -608,7 +637,6 @@ mapStatTab <- readMapStatTab(inputArgs['mapStats'])
 ## General information
 
 ```{r generalInfo, results = 'asis'}
-library(knitr)
 kable(basicStats, caption = 'Information about sequencing')
 ```
 
@@ -621,12 +649,12 @@ most likely caused by the sequencing machine failure
 or tagmentation
 
 ###R1
-```{r perBaseQC_R1, fig.height = 6, fig.width = 8, fig.align = "left"}
+```{r perBaseQC_R1, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotPerBaseQuality_plotly(perBaseQC_R1, 'Per base quality for R1')
 ```
 
 ###R2
-```{r perBaseQC_R2, fig.height = 6, fig.width = 8, fig.align = "left"}
+```{r perBaseQC_R2, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotPerBaseQuality_plotly(perBaseQC_R2, 'Per base quality for R2')
 ```
 
@@ -635,12 +663,12 @@ plotPerBaseQuality_plotly(perBaseQC_R2, 'Per base quality for R2')
 Adapter contamination
 
 ###R1
-```{r adapterQC_R1, fig.height = 6, fig.width = 8, fig.align = "left"}
+```{r adapterQC_R1, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotAdapterContent_plotly(adapters_R1, 'Adapter contamination in R1')
 ```
 
 ###R2
-```{r adapterQC_R2, fig.height = 6, fig.width = 8, fig.align = "left"}
+```{r adapterQC_R2, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotAdapterContent_plotly(adapters_R2, 'Adapter contamination in R2')
 ```
 
@@ -654,7 +682,6 @@ plotAdapterContent_plotly(adapters_R2, 'Adapter contamination in R2')
 trimInf_R2 <- as.data.table(readInTrimmingInfo(inputArgs['trimInfoR2']))
 setnames(trimInf_R2, 'Value', 'R2')
 
-library(knitr)
 kable(trimInf_R2, caption = 'Trimming statistics')
 ```
 
@@ -662,37 +689,53 @@ kable(trimInf_R2, caption = 'Trimming statistics')
 After trimming
 
 ### R2
-```{r perBaseTrimQC_R2, fig.height = 6, fig.width = 8, fig.align = "left"}
+```{r perBaseTrimQC_R2, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotPerBaseQuality_plotly(perBaseQCtrim_R2, 'Per base quality for R2')
 ```
 
 ## Adapter content 
 
 ### R2
-```{r adapterTrimQC_R2, fig.height = 6, fig.width = 8, fig.align = "left"}
+```{r adapterTrimQC_R2, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotAdapterContent_plotly(adaptersTrim_R2, 'Adapter contamination in R1')
 ```
 
 # Demultiplexing {.tabset}
 
 ```{r demultiplexStats, results = "asis"}
-library(knitr)
 kable(demultiplexStats[[1]], caption = 'Overview of demultiplexing')
 ```
 
 ## Bar plot
-```{r demultiplexStatsPlot, fig.height = 12, fig.width = 10, fig.align = "left"}
+```{r demultiplexStatsPlot, fig.height = 12, fig.width = 8.5, fig.align = "left"}
 plotDemultipleStats_plotly(demultiplexStats[[2]], '% of reads per sample')
 ```
 
 ## Plate view
-```{r demultiplexPlatePlot, fig.height = 6, fig.width = 8, fig.align = "left"}
+```{r demultiplexPlatePlot, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotDemultiplexPlate_plotly(demultiplexStats[[2]], 
                             '% of reads per sample, plate view')
 ```
 
 
-# Mapping
-```{r mapStatsPlot, fig.height = 6, fig.width = 8, fig.align = "left"}
+# Mapping {.tabset}
+
+## Barplot - raw values
+```{r mapStatsPlot, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotMappingStats_plotly(mapStatTab, 'Overview of mapping statistics')
 ```
+
+## Barplot - percentages
+```{r mapStatsPlotPerc, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+plotMappingStats_plotly(convertMapStatsToPerc(mapStatTab), 
+                        'Overview of mapping statistics (in %)')
+```
+
+## Table 
+```{r mapStatsTab, results = 'asis'}
+kable(mapStatTab, caption = 'Mapping statistics') %>%
+      kable_styling(bootstrap_options = c("striped", "hover", "condensed",
+                                          "responsive")) %>%
+  scroll_box(width = "100%", height = "500px")
+```
+
