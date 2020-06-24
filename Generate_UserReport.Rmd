@@ -20,9 +20,10 @@ inputArgs <- c('test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plat
                'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt', 
                'test_input/BRBseq_v3_plate_1_S25_R2_001.fastq.gz_trimming_report.txt',
                'test_input/BRBseq_v3_plate_1_S25_val_1_fastqc/fastqc_data.txt',
-               'test_input/stats.txt', 'test_input/mapStatsTab.csv')
+               'test_input/stats.txt', 'test_input/mapStatsTab.csv',
+               'test_input/NXT0570_nxid13444_GRCz11.100_GFP_BRB_AM_50_readsCombined.csv')
 names(inputArgs) <- c('fastqcR1', 'fastqcR2', 'trimInfoR2', 'fastqcTrimR2',
-                      'demultStats', 'mapStats')
+                      'demultStats', 'mapStats', 'countTab')
 ```
 
 ```{r setup_and_functions, include = FALSE}
@@ -320,40 +321,44 @@ readDemultiplexInfo <- function(filePath) {
   # add row and column position in plate
   result[[2]]$PlateRow <- gsub('[0-9]+', '', result[[2]]$Barcode)
   result[[2]]$PlateCol <- gsub('[A-Z]+', '', result[[2]]$Barcode)
+  colnames(result[[2]])[2] <- 'Reads'
   
   result
 }
 
-#' plotDemultipleStats
-#' Plots bar plot of demultiplexed statistics
-#' @param dtToPlot, data table to plot, result of readDemultiplexInfo(x)[[2]]
+#' plotBarChart_plotly
+#' Plots bar plot of demultiplexed statistics and of exonic reads
+#' @param dtToPlot data frame to plot
+#' @param mode column name to plot
+#' @param xAxisTitle title of X axis
 #' @param plotTitle title of the plot
 #' @retun plotly
-plotDemultipleStats_plotly <- function(dtToPlot, plotTitle) {
-  # data frame to dysplay values ordered by percentage
-  byPerc <- data.frame(x = dtToPlot$Percent, y = dtToPlot$Barcode, 
+plotBarChart_plotly <- function(dtToPlot, mode = 'Reads', xAxisTitle, 
+                                plotTitle) {
+  # data frame to dysplay ordered values
+  byPerc <- data.frame(x = dtToPlot[, mode], y = dtToPlot$Barcode, 
                        stringsAsFactors = F)
   byPerc <- byPerc[order(byPerc$x), ]
   byPerc$y <- factor(byPerc$y, levels = byPerc$y)
   # data frame to dysplay values ordered by name
-  byName <- data.frame(x = dtToPlot$Percent, y = dtToPlot$Barcode,
+  byName <- data.frame(x = dtToPlot[, mode], y = dtToPlot$Barcode,
                        stringsAsFactors = F)
   byName$y <- factor(byName$y, levels = sort(byName$y, decreasing = T))
-
+  
   # buttons
   yAxisform <- append(alitheaPlotlyAxis, list(title = 'Sample'))
   yAxisREform <- append(yAxisform,
                         list(categoryorder = "array",
                              categoryarray = levels(byName$y)))
   updatemenus <- list(
-  list(active = -1, type = "buttons",
-       buttons = list(
-         list(label = "Sort by value", method = "update",
-              args = list(list(visible = c(T, F)),
-                          list(yaxis = yAxisform))),
-         list(label = "Sort by name", method = "update",
-              args = list(list(visible = c(F, T)),
-                          list(yaxis = yAxisREform))))))
+    list(active = -1, type = "buttons",
+         buttons = list(
+           list(label = "Sort by value", method = "update",
+                args = list(list(visible = c(T, F)),
+                            list(yaxis = yAxisform))),
+           list(label = "Sort by name", method = "update",
+                args = list(list(visible = c(F, T)),
+                            list(yaxis = yAxisREform))))))
   
   fig <- plot_ly() %>% 
     add_trace(data = byPerc, x = ~x, y = ~y, type = "bar", visible = T,
@@ -362,9 +367,9 @@ plotDemultipleStats_plotly <- function(dtToPlot, plotTitle) {
               marker = list(color = basicColor)) %>%
     layout(updatemenus = updatemenus, title = plotTitle, showlegend = F,
            font = alitheaPlotlyFont,
+           yaxis = append(alitheaPlotlyAxis, list(title = 'Sample')),
            xaxis = append(alitheaPlotlyAxis,
-                          list(title = '% of reads going to this sample',
-                               tick0 = 0, dtick = 0.5)))
+                          list(title = xAxisTitle, tick0 = 0, showgrid = T)))
   
   fig
 }
@@ -631,6 +636,31 @@ demultiplexStats <- readDemultiplexInfo(inputArgs['demultStats'])
 
 # mapping statistics
 mapStatTab <- readMapStatTab(inputArgs['mapStats'])
+
+# count table 
+countTab <- fread(inputArgs['countTab'])
+setnames(countTab, 'Unknown_Barcode', 'undetermined')
+```
+
+```{r computeExonicReads, include = FALSE}
+# calculate number of exonic reads
+exonicReads <- colSums(countTab[, -c('Gene_id', 'Gene_name')])
+exonicReads <- data.frame(Barcode = names(exonicReads), Reads = exonicReads)
+
+# compute percentage of exonic reads from uniquely mapped reads
+mapStatTabUniqMap <- mapStatTab[, c('SubSample', 'uniquely mapped'), 
+                                with = F]
+colnames(mapStatTabUniqMap)[1] <- 'Sample'
+mapStatTabUniqMap <- as.data.table(mapStatTabUniqMap)
+# merge with exonic reads
+colnames(exonicReads)[1] <- 'Barcode'
+exonicReads <- as.data.table(exonicReads)
+setkey(exonicReads, 'Barcode')
+colnames(mapStatTabUniqMap)[1] <- 'Barcode'
+setkey(mapStatTabUniqMap, 'Barcode')
+exonicReads <- merge(exonicReads, mapStatTabUniqMap)
+exonicReads[, Percent := Reads / `uniquely mapped`]
+exonicReads <- as.data.frame(exonicReads)
 ```
 
 # Quality control of the raw sequencing data
@@ -708,7 +738,8 @@ kable(demultiplexStats[[1]], caption = 'Overview of demultiplexing')
 
 ## Bar plot
 ```{r demultiplexStatsPlot, fig.height = 12, fig.width = 8.5, fig.align = "left"}
-plotDemultipleStats_plotly(demultiplexStats[[2]], '% of reads per sample')
+plotBarChart_plotly(demultiplexStats[[2]], 'Percent', '% of reads per sample',
+                    'Demultiplexing results')
 ```
 
 ## Plate view
@@ -739,3 +770,30 @@ kable(mapStatTab, caption = 'Mapping statistics') %>%
   scroll_box(width = "100%", height = "500px")
 ```
 
+# Exonic reads {.tabset}
+
+## Number of reads
+```{r exonicReads, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+plotBarChart_plotly(exonicReads, mode = 'Reads', 
+                    'Number of exonic reads per sample',
+                    'Number of exonic reads per sample')
+```
+
+## % from uniquely mapped
+```{r exonicReadsPerc, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+plotBarChart_plotly(exonicReads, mode = 'Percent',  
+                    '% of exonic reads per sample',
+                    '% of exonic reads per sample')
+```
+
+## Table 
+```{r exonicReadsTab, results = 'asis'}
+colnames(exonicReads) <- c('Sample', 'Number of reads',
+                           '% from uniquely mapped')
+kable(exonicReads, caption = 'Exonic reads') %>%
+      kable_styling(bootstrap_options = c("striped", "hover", "condensed",
+                                          "responsive")) %>%
+  scroll_box(width = "100%", height = "500px")
+```
+
+# Number of expressed genes
