@@ -108,7 +108,7 @@ params.barcodefile = file(params.techDir + '/barcodes_v3.txt')
 // create channel which reads from the input table with samples
 sampleTabInfoCh = Channel.fromPath( sampleTabPath )
 sampleTabInfoCh
-    .splitCsv(header: true, sep:'\t')
+    .splitCsv(header: true, sep:'\t', skip: 17)
     .into { logFqFiles; logGenomesFiles }
 
 logFqFiles
@@ -160,8 +160,9 @@ log.info """\
 sampleTabCh = Channel.fromPath( sampleTabPath )
 sampleTabCh
     .splitCsv(header: true, sep:'\t')
-    .map{ row -> tuple(row.RunID, row.LibraryID, row.SampleID, row.R1len,
-                       row.BU_ptrn, row.Specie, row.Genome) }
+    .map{ row -> tuple(row.RunID, row.LibraryID, row.SampleID, row.pos,
+                       row.SampleName, row.Specie, row.Genome, row.R1len,
+                       row.BU_ptrn) }
     .set{ sampleTab }
 
 /* ----------------------------------------------------------------------------
@@ -171,12 +172,12 @@ process qcCheck {
     label 'low_memory'
 
     input:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie,
-          Genome from sampleTab
+    tuple RunID, LibraryID, SampleID, pos, SampleName, Specie, Genome, R1len,
+          BU_ptrn from sampleTab
 
     output:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie,
-          Genome into qcFiles
+    tuple RunID, LibraryID, SampleID, pos, SampleName, Specie, Genome, R1len,
+          BU_ptrn into qcFiles
 
     shell:
     '''
@@ -212,12 +213,12 @@ process trimReads {
                    mode: 'copy', pattern: '*.{txt,zip}', overwrite: true
 
     input:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie,
-          Genome from qcFiles
+    tuple RunID, LibraryID, SampleID, pos, SampleName, Specie, Genome, R1len,
+          BU_ptrn from qcFiles
 
     output:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome,
-          "${SampleID}*_val_1.fq.gz",
+    tuple RunID, LibraryID, SampleID, pos, SampleName, Specie, Genome, R1len,
+          BU_ptrn, "${SampleID}*_val_1.fq.gz",
           "${SampleID}*_val_2.fq.gz" into trimmedFiles
     tuple path("*.txt"), path("*.zip") into trimQCfiles
 
@@ -279,12 +280,12 @@ process demultiplex {
                 mode: 'copy', pattern: '*.{fastq.gz,txt}', overwrite: true
 
     input:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, 
-          trimmedR1, trimmedR2 from trimmedFiles
+    tuple RunID, LibraryID, SampleID, pos, SampleName, Specie, Genome, R1len,
+          BU_ptrn, trimmedR1, trimmedR2 from trimmedFiles
 
     output:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, 
-          trimmedR1, trimmedR2, path('*.fastq.gz') into demultiplexBundle
+    tuple RunID, LibraryID, SampleID, pos, SampleName, Specie, Genome, R1len,
+          BU_ptrn, trimmedR1, trimmedR2, path('*.fastq.gz') into demultiplexBundle
     path('*.txt') into demultiplexStats
 
     shell:
@@ -293,6 +294,7 @@ process demultiplex {
     java -jar !{params.brbseqTools} Demultiplex -r1 !{trimmedR1} \
               -r2 !{trimmedR2} -c !{params.barcodefile} -o "." \
               -UMI $umiLen -p !{BU_ptrn}
+    mv !{pos}'.fastq.gz' !{SampleID}.'fastq.gz'
     '''
 }
 
