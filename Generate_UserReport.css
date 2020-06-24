@@ -1,0 +1,47 @@
+#main .nav-pills > li.active > a,
+#main .nav-pills > li.active > a:hover,
+#main .nav-pills > li.active > a:focus {
+   background-color: #3A89C9;
+}
+
+
+#main .nav-pills > li > a:hover {
+  background-color: #3A89C9;
+}
+
+h1,h2,h3,h4,h5,h6,legend{
+    color: #3A89C9;
+}
+
+#nav-top span.glyphicon {
+  color: #3A89C9;
+}
+
+#table-of-contents header{
+    color:#3A89C9;
+}
+
+#table-of-contents h2{
+    background-color:#3A89C9;
+}
+
+#main a {
+    background-image: linear-gradient(180deg,#3A89C9,#3A89C9);
+    color:#3A89C9;
+}
+
+a:hover{
+    color:#3A89C9
+}
+
+a:visited{
+    color:#3A89C9
+}
+
+#sidebar header{
+    color:#3A89C9;
+}
+
+#sidebar h2{
+    background-color:#3A89C9;
+}

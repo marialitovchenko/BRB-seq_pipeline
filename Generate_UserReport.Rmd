@@ -10,6 +10,7 @@ output:
     lightbox: false
     gallery: false
     highlight: tango
+    css: Generate_UserReport.css
 params:
   args: inputArgs
 ---
@@ -58,7 +59,7 @@ alitheaPlotlyFont <- list(color = "black", family = "Helvetica", size = 12)
  
 
 # colors
-basicColor <- '#556D7D'
+basicColor <- '#3A89C9'
 colorCode <- c("mapped to mult. loci" = '#FFBABA', 
                "NOT mapped - mismatches" = '#C48484', 
                'NOT mapped - too short' = '#991D1D',
@@ -663,6 +664,18 @@ exonicReads[, Percent := Reads / `uniquely mapped`]
 exonicReads <- as.data.frame(exonicReads)
 ```
 
+```{r computeNumbExprGenes, include = FALSE}
+numbExprGenes1 <- apply(countTab[, -c('Gene_id', 'Gene_name')], 2, 
+                         function(x) sum(x > 1))
+numbExprGenes1 <- data.frame(Barcode = names(numbExprGenes1), 
+                             NumbGenes = numbExprGenes1)
+
+numbExprGenes10 <- apply(countTab[, -c('Gene_id', 'Gene_name')], 2, 
+                         function(x) sum(x > 10))
+numbExprGenes10 <- data.frame(Barcode = names(numbExprGenes10), 
+                              NumbGenes = numbExprGenes10)
+```
+
 # Quality control of the raw sequencing data
 ## General information
 
@@ -796,4 +809,27 @@ kable(exonicReads, caption = 'Exonic reads') %>%
   scroll_box(width = "100%", height = "500px")
 ```
 
-# Number of expressed genes
+# Number of expressed genes {.tabset}
+
+## > 1 read per gene
+```{r numbExprGenes1, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+plotBarChart_plotly(numbExprGenes1, mode = 'NumbGenes', 
+                    'Number of genes with > 1 reads', 
+                    'Number of genes')
+```
+
+## > 10 reads per gene
+```{r numbExprGenes10, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+plotBarChart_plotly(numbExprGenes10, mode = 'NumbGenes',  
+                    'Number of genes with > 10 reads',
+                    'Number of genes')
+```
+
+## Table
+```{r NumbGenesTab, results = 'asis'}
+colnames(numbExprGenes1) <- c('Sample', 'Number of genes')
+kable(numbExprGenes1, caption = 'Number of genes with > 1 read') %>%
+      kable_styling(bootstrap_options = c("striped", "hover", "condensed",
+                                          "responsive")) %>%
+  scroll_box(width = "100%", height = "500px")
+```
