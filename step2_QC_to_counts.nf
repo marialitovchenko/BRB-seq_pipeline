@@ -95,6 +95,8 @@ genomePath = file(params.genomeDir)
 params.outputDir = file('.')
 outputDir = file(params.outputDir) 
 mapStatsTab = outputDir + "/mapStatsTab.csv"
+// subfolder for files with used selected barcodes
+usedBarcodeDir = outputDir + "/barcodeTables"
 
 // technical directory, contains all support files, like scripts, jars, etc
 params.techDir = 'techDir'
@@ -163,7 +165,7 @@ sampleTabCh
     .map{ row -> tuple(row.RunID, row.LibraryID, row.SampleID, row.R1len, 
                        row.BU_ptrn, row.pos, row.SampleName, row.Specie,
                        row.Genome) }
-    .into{ sampleTab; fqForQCtrim}
+    .into{ sampleTab; fqForQCtrim; forRunBarcodeTabs}
 
 // sampleTab will have the full information about submitted samples, and 
 // fqForQCtrim will only have info determining unique fastq files. This is done
@@ -181,6 +183,30 @@ fqForQCtrim.flatMap { item ->
     }
     .unique()
     .set{uniq_fqForQCtrim}
+
+// read in avaible barcodes
+barcodeTabCh = Channel.fromPath( params.barcodefile  )
+barcodeTabCh
+    .splitCsv(header: true, sep:'\t')
+    .map{ row -> tuple(row.Name, row.B1) }
+    .set{ barcodeTab}
+// create a map telling which barcodes were used per sample
+forRunBarcodeTabs
+  .flatMap { item ->
+        RunID = item[0];
+        LibraryID = item[1];
+        SampleID = item[2];
+        Name = item[5];
+        collect { onefile -> return [ Name, RunID, LibraryID, SampleID ] }
+    }
+    .set{barcodesPerRun}
+// 
+barcodesPerRun
+    .combine(barcodeTab, by : 0)
+    .collectFile(storeDir: usedBarcodeDir) { item ->
+      [ "${item[1]}_${item[2]}_${item[3]}.txt", 
+      item[0] + '\t' + item[4] +  '\n']
+    }
 
 /* ----------------------------------------------------------------------------
 * Perform QC check
@@ -204,7 +230,7 @@ process qcCheck {
     R2path=$(find !{userDir}'/'!{RunID} -type f | grep !{LibraryID} | \
              grep !{SampleID} | grep !{params.R2code} | \
              grep "!{params.fastqExtens}")
-    fastqc $R1path $R2path
+    fastqc $R1path $R2path --threads 2
     # As fastqc produced files are located in the sam folder as fastq reads, we
     # have to retrieve fastqc results manually
     fastqcRes=$(find !{userDir}'/'!{RunID} -type f | grep !{LibraryID} | \
@@ -271,7 +297,7 @@ process trimReads {
 // merge back together full information about samples and corresponding trimmed
 // files
 sampleTab
-    .join(trimmedFiles, by: [0,1,2,3,4])
+    .combine(trimmedFiles, by: [0,1,2,3,4])
     .set{sampleTabTrim}
 
 
