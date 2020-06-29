@@ -160,10 +160,27 @@ log.info """\
 sampleTabCh = Channel.fromPath( sampleTabPath )
 sampleTabCh
     .splitCsv(header: true, sep:'\t')
-    .map{ row -> tuple(row.RunID, row.LibraryID, row.SampleID, row.pos,
-                       row.SampleName, row.Specie, row.Genome, row.R1len,
-                       row.BU_ptrn) }
-    .set{ sampleTab }
+    .map{ row -> tuple(row.RunID, row.LibraryID, row.SampleID, row.R1len, 
+                       row.BU_ptrn, row.pos, row.SampleName, row.Specie,
+                       row.Genome) }
+    .into{ sampleTab; fqForQCtrim}
+
+// sampleTab will have the full information about submitted samples, and 
+// fqForQCtrim will only have info determining unique fastq files. This is done
+// in order to restrict number of QC and trimming processes only to the 
+// nessecary ones, without repetition.
+
+fqForQCtrim.flatMap { item ->
+        RunID = item[0];
+        LibraryID = item[1];
+        SampleID = item[2];
+        R1len = item[3];
+        BU_ptrn = item[4];
+        collect { onefile -> return [ RunID, LibraryID, SampleID, R1len,
+                            BU_ptrn ] }
+    }
+    .unique()
+    .set{uniq_fqForQCtrim}
 
 /* ----------------------------------------------------------------------------
 * Perform QC check
@@ -172,12 +189,10 @@ process qcCheck {
     label 'low_memory'
 
     input:
-    tuple RunID, LibraryID, SampleID, pos, SampleName, Specie, Genome, R1len,
-          BU_ptrn from sampleTab
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn from uniq_fqForQCtrim
 
     output:
-    tuple RunID, LibraryID, SampleID, pos, SampleName, Specie, Genome, R1len,
-          BU_ptrn into qcFiles
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn into qcFiles
 
     shell:
     '''
@@ -213,12 +228,11 @@ process trimReads {
                    mode: 'copy', pattern: '*.{txt,zip}', overwrite: true
 
     input:
-    tuple RunID, LibraryID, SampleID, pos, SampleName, Specie, Genome, R1len,
-          BU_ptrn from qcFiles
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn from qcFiles
 
     output:
-    tuple RunID, LibraryID, SampleID, pos, SampleName, Specie, Genome, R1len,
-          BU_ptrn, "${SampleID}*_val_1.fq.gz",
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, 
+          "${SampleID}*_val_1.fq.gz",
           "${SampleID}*_val_2.fq.gz" into trimmedFiles
     tuple path("*.txt"), path("*.zip") into trimQCfiles
 
@@ -254,6 +268,13 @@ process trimReads {
     '''
 }
 
+// merge back together full information about samples and corresponding trimmed
+// files
+sampleTab
+    .join(trimmedFiles, by: [0,1,2,3,4])
+    .set{sampleTabTrim}
+
+
 /* ----------------------------------------------------------------------------
 * !!! IMPORTANT NOTE: !!!
 * With use of BRB-seq tools, it is not nessecary to demultiplex and map files
@@ -280,12 +301,13 @@ process demultiplex {
                 mode: 'copy', pattern: '*.{fastq.gz,txt}', overwrite: true
 
     input:
-    tuple RunID, LibraryID, SampleID, pos, SampleName, Specie, Genome, R1len,
-          BU_ptrn, trimmedR1, trimmedR2 from trimmedFiles
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, pos, SampleName, Specie, 
+          Genome, trimmedR1, trimmedR2 from sampleTabTrim
 
     output:
-    tuple RunID, LibraryID, SampleID, pos, SampleName, Specie, Genome, R1len,
-          BU_ptrn, trimmedR1, trimmedR2, path('*.fastq.gz') into demultiplexBundle
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, pos, SampleName, Specie, 
+          Genome, trimmedR1, trimmedR2,
+          path('*.fastq.gz') into demultiplexBundle
     path('*.txt') into demultiplexStats
 
     shell:
@@ -294,7 +316,7 @@ process demultiplex {
     java -jar !{params.brbseqTools} Demultiplex -r1 !{trimmedR1} \
               -r2 !{trimmedR2} -c !{params.barcodefile} -o "." \
               -UMI $umiLen -p !{BU_ptrn}
-    mv !{pos}'.fastq.gz' !{SampleID}.'fastq.gz'
+    mv !{pos}'.fastq.gz' !{SampleName}.'fastq.gz'
     '''
 }
 
@@ -306,14 +328,17 @@ demultiplexBundle
         SampleID = item[2];
         R1len = item[3];
         BU_ptrn = item[4];
-        Specie = item[5];
-        Genome = item[6];
-        trimmedR1 = item[7];
-        trimmedR2 = item[8];
-        files = item[9];
+        pos = item[5];
+        SampleName = item[6]; 
+        Specie = item[7]; 
+        Genome = item[8];
+        trimmedR1 = item[9];
+        trimmedR2 = item[10];
+        files = item[11];
         files.collect { onefile -> return [ RunID, LibraryID, SampleID, R1len,
-                        BU_ptrn, Specie, Genome, trimmedR1, trimmedR2, 
-                        onefile ] }
+                                            BU_ptrn, pos, SampleName, Specie, 
+                                            Genome, trimmedR1, trimmedR2, 
+                                            onefile ] }
     }
     .set { demultiplexFiles }
 
@@ -331,12 +356,13 @@ process mapWithStar {
                 overwrite: true
 
     input:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, 
-          trimmedR1, trimmedR2, demultiplexfq from demultiplexFiles
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, pos, SampleName, Specie, 
+          Genome, trimmedR1, trimmedR2, demultiplexfq from demultiplexFiles
 
     output:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, 
-          trimmedR1, trimmedR2, demultiplexfq, path('*.sortedByCoord.out.bam'),
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, pos, SampleName, Specie, 
+          Genome, trimmedR1, trimmedR2, demultiplexfq, 
+          path('*.sortedByCoord.out.bam'),
           path('*_Log.final.out') into mappedBundle
 
     shell:
@@ -366,8 +392,9 @@ process aggregateMapStats {
     label 'low_memory'
 
     input:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, trimmedR1, 
-          trimmedR2, demultiplexfq, mappedBam, mappedLog from mappedForStats
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, pos, SampleName, Specie, 
+          Genome, trimmedR1, trimmedR2, demultiplexfq, mappedBam, 
+          mappedLog from mappedForStats
 
     output:
     stdout mappingStatsAggr
@@ -378,9 +405,10 @@ process aggregateMapStats {
     statsAggr=(!{RunID})
     statsAggr+=(!{LibraryID})
     statsAggr+=(!{SampleID})
+    statsAggr+=(!{pos})
+    statsAggr+=(!{SampleName})
     statsAggr+=(!{Specie})
     statsAggr+=(!{Genome})
-    statsAggr+=(!{demultiplexfq})
 
     # append mapping stats info
     statsAggr+=(`grep "Number of input reads" !{mappedLog} | sed 's/.*|//'`)
@@ -407,8 +435,9 @@ process countReads {
                mode: 'copy', pattern: '{*.detailed.txt}', overwrite: true
 
     input:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, Specie, Genome, trimmedR1,
-          trimmedR2, demultiplexfq, mappedBam, mappedLog from mappedForCounts
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, pos, SampleName, Specie, 
+          Genome, trimmedR1, trimmedR2, demultiplexfq, mappedBam, 
+          mappedLog from mappedForCounts
 
     output:
     tuple RunID, LibraryID, SampleID, Genome, 
@@ -453,7 +482,7 @@ process mergeReadCounts {
    shell:
    '''
    function getIndexOfSubSample {
-       # first of all, extract SubSample name, i.e. A01, B12, C05, etc
+       # first of all, extract sample name
        fileName=`echo $1 | sed 's@.*/@@g'`
        # I would simply replace everything after ".", but nextflow doesn't like
        # backslash, which is used as escape character in bash
