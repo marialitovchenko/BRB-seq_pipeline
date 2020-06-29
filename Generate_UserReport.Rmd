@@ -36,6 +36,7 @@ library(ggpubr)
 library(ggsignif)
 library(kableExtra)
 library(knitr)
+library(limma)
 library(plotly)
 library(plyr)
 
@@ -407,6 +408,8 @@ readMapStatTab <- function(mappingStatsPath) {
   # Names of the columns
   idColNames <- c('RunID', 'LibraryID', 'SampleID', 'Specie', 'Genome', 
                   'SubSample')
+  #idColNames <- c('RunID', 'LibraryID', 'SampleID', 'pos', 'SampleName',
+  #                'Specie', 'Genome')
   statNames <- c(idColNames, 'total reads', 'uniquely mapped', 
                  'mapped to mult. loci', 'mapped to too many loci',
                  'NOT mapped - mismatches', 'NOT mapped - too short',
@@ -599,6 +602,59 @@ plotMappingStats_plotly <- function(dtToPlot, plotTitle) {
                         legend = list(x = 100, y = 0))
   fig
 }
+
+#' calcPCA
+#' Calculates PCA loadings
+#' @param countData count table
+#' @param mapStats table with mapping statistics
+#' @return list, where first element is PCA coordinates of sample, and second 
+#'         is a vector with PCA loadings expressed as percentage
+calcPCA <- function(countData, mapStats){
+  # calculate PCA loadings of count matrix
+  countsPCA <- prcomp(t(countData))
+  # calculate how much of variation (in percentage term) every PC explains
+  percPCexpl <- round(countsPCA$sdev / sum(countsPCA$sdev) * 100, 2)
+  names(percPCexpl) <- paste0('PC', 1:length(percPCexpl))
+  
+  # add info about uniquely mapped reads
+  countsPCA <- as.data.frame(countsPCA$x)
+  countsPCA$SubSample <- rownames(countsPCA)
+  countsPCA <- as.data.table(countsPCA)
+  mapStatsReduced <- mapStatTab[, c('SubSample', 'uniquely mapped')]
+  setkey(countsPCA, SubSample)
+  setkey(mapStatsReduced, SubSample)
+  countsPCA <- merge(countsPCA, mapStatsReduced, all.x = T)
+  
+  result <- list(countsPCA, percPCexpl)
+  names(result) <- c('countsPCA', 'percPCexpl')
+  
+  result
+}
+
+#' plotPCA_plotly
+#' Plots PCA with use of plotly
+#' @param pcaListToPlot list, result of calcPCA
+#' @param plotTitle string, title of the plot
+#' @return plotly
+plotPCA_plotly <- function(pcaListToPlot, plotTitle) {
+  fig <- plot_ly(data = pcaListToPlot$countsPCA) %>% 
+  add_trace(x = ~PC1, y = ~PC2, type = "scatter", mode = "markers", 
+            size = ~`uniquely mapped`, marker = list(color = basicColor),
+            text = ~ paste("# uniq. mapped ", `uniquely mapped`), 
+            hoverinfo = "text") %>%
+  add_text(x = ~PC1, y = ~PC2, text = ~SubSample,
+           textposition = "top right") %>%
+  layout(title = plotTitle, showlegend = F, font = alitheaPlotlyFont,
+         xaxis = append(alitheaPlotlyAxis, 
+                        list(title = paste0('PC1 (', 
+                                            pcaListToPlot$percPCexpl['PC1'],
+                                            '%)'))),
+         yaxis = append(alitheaPlotlyAxis, 
+                        list(title = paste0('PC2 (', 
+                                            pcaListToPlot$percPCexpl['PC2'],
+                                            '%)'))))
+  fig
+}
 ```
 
 ```{r readInput, include = FALSE}
@@ -665,15 +721,34 @@ exonicReads <- as.data.frame(exonicReads)
 ```
 
 ```{r computeNumbExprGenes, include = FALSE}
+# number of genes with > 1 count
 numbExprGenes1 <- apply(countTab[, -c('Gene_id', 'Gene_name')], 2, 
                          function(x) sum(x > 1))
 numbExprGenes1 <- data.frame(Barcode = names(numbExprGenes1), 
                              NumbGenes = numbExprGenes1)
-
+# number of genes with > 10 counts
 numbExprGenes10 <- apply(countTab[, -c('Gene_id', 'Gene_name')], 2, 
                          function(x) sum(x > 10))
 numbExprGenes10 <- data.frame(Barcode = names(numbExprGenes10), 
                               NumbGenes = numbExprGenes10)
+```
+
+```{r normCounts, include = FALSE}
+# names of the QC rows in the count table
+qcNames <- c("__alignment_not_unique", "__ambiguous", "__no_feature",
+             "__not_aligned", "__too_low_aQual")
+countTabMatr <- as.matrix(countTab[, -2:-1])
+rownames(countTabMatr) <- countTab$Gene_id
+# normalize with voom
+countsNormVoom <- voom(counts = countTabMatr, normalize.method = "quantile")
+countsNormVoom <- countsNormVoom$E
+# now we can also remove QC rows from the table
+countsNormVoom <- countsNormVoom[!rownames(countsNormVoom) %in% qcNames, ]
+```
+
+```{r calcPCA, include = FALSE}
+countsRawPCA <- calcPCA(countTab[, -2:-1])
+countsNormPCA <- calcPCA(countsNormVoom[, -2:-1])
 ```
 
 # Quality control of the raw sequencing data
@@ -832,4 +907,16 @@ kable(numbExprGenes1, caption = 'Number of genes with > 1 read') %>%
       kable_styling(bootstrap_options = c("striped", "hover", "condensed",
                                           "responsive")) %>%
   scroll_box(width = "100%", height = "500px")
+```
+
+# PCA {.tabset}
+
+## raw counts 
+```{r pcaRaw, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+plotPCA_plotly(countsRawPCA, 'PCA based on raw counts')
+```
+
+## normalized data
+```{r PcaNorm, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+plotPCA_plotly(countsNormPCA, 'PCA based on normalized counts')
 ```
