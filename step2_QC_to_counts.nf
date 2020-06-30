@@ -110,7 +110,7 @@ params.barcodefile = file(params.techDir + '/barcodes_v3.txt')
 // create channel which reads from the input table with samples
 sampleTabInfoCh = Channel.fromPath( sampleTabPath )
 sampleTabInfoCh
-    .splitCsv(header: true, sep:'\t', skip: 17)
+    .splitCsv(header: true, sep:'\t')
     .into { logFqFiles; logGenomesFiles }
 
 logFqFiles
@@ -163,7 +163,7 @@ sampleTabCh = Channel.fromPath( sampleTabPath )
 sampleTabCh
     .splitCsv(header: true, sep:'\t')
     .map{ row -> tuple(row.RunID, row.LibraryID, row.SampleID, row.R1len, 
-                       row.BU_ptrn, row.pos, row.SampleName, row.Specie,
+                       row.BU_ptrn, row.SampleName, row.pos, row.Specie,
                        row.Genome) }
     .into{ sampleTab; fqForQCtrim; barcodesPerRun}
 
@@ -203,14 +203,16 @@ barcodesPerRun
         RunID = item[0];
         LibraryID = item[1];
         SampleID = item[2];
-        Name = item[5];
-        collect { onefile -> return [ Name, RunID, LibraryID, SampleID ] }
+        Name = item[6];
+        SampleName = item[5];
+        collect { onefile -> return [ Name, RunID, LibraryID, SampleID, 
+                                      SampleName ] }
     }
-    .groupTuple(by : [0, 1, 2, 3])
+    .groupTuple(by : [0, 1, 2, 3, 4])
     .combine(barcodeTab, by : 0)
     .collectFile(storeDir: usedBarcodeDir) { item ->
       [ "${item[1]}_${item[2]}_${item[3]}.txt", 
-      item[0] + '\t' + item[4] +  '\n']
+      item[4] + '\t' + item[5] +  '\n']
     }
 
 /* ----------------------------------------------------------------------------
@@ -299,12 +301,6 @@ process trimReads {
     '''
 }
 
-// merge back together full information about samples and corresponding trimmed
-// files
-sampleTab
-    .combine(trimmedFiles, by: [0,1,2,3,4])
-    .set{sampleTabTrim}
-
 
 /* ----------------------------------------------------------------------------
 * !!! IMPORTANT NOTE: !!!
@@ -332,12 +328,11 @@ process demultiplex {
                 mode: 'copy', pattern: '*.{fastq.gz,txt}', overwrite: true
 
     input:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, pos, SampleName, Specie, 
-          Genome, trimmedR1, trimmedR2 from sampleTabTrim
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, trimmedR1, 
+          trimmedR2 from trimmedFiles
 
     output:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, pos, SampleName, Specie, 
-          Genome, trimmedR1, trimmedR2,
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, trimmedR1, trimmedR2,
           path('*.fastq.gz') into demultiplexBundle
     path('*.txt') into demultiplexStats
 
@@ -352,11 +347,10 @@ process demultiplex {
     java -jar !{params.brbseqTools} Demultiplex -r1 !{trimmedR1} \
               -r2 !{trimmedR2} -c $barcodeFile -o "." \
               -UMI $umiLen -p !{BU_ptrn}
-    mv !{pos}'.fastq.gz' !{SampleName}.'fastq.gz'
     '''
 }
 
-// fork into #(of demultiplexed file) channels, preserving metadata
+// fork into #(of demultiplexed file) channels, add sample-specific metadata
 demultiplexBundle
     .flatMap { item ->
         RunID = item[0];
@@ -364,19 +358,30 @@ demultiplexBundle
         SampleID = item[2];
         R1len = item[3];
         BU_ptrn = item[4];
-        pos = item[5];
-        SampleName = item[6]; 
-        Specie = item[7]; 
-        Genome = item[8];
-        trimmedR1 = item[9];
-        trimmedR2 = item[10];
-        files = item[11];
+        trimmedR1 = item[5];
+        trimmedR2 = item[6];
+        files = item[7];
         files.collect { onefile -> return [ RunID, LibraryID, SampleID, R1len,
-                                            BU_ptrn, pos, SampleName, Specie, 
-                                            Genome, trimmedR1, trimmedR2, 
+                                            BU_ptrn, trimmedR1, trimmedR2,
                                             onefile ] }
     }
-    .set { demultiplexFiles }
+    .flatMap { item ->
+        RunID = item[0];
+        LibraryID = item[1];
+        SampleID = item[2];
+        R1len = item[3];
+        BU_ptrn = item[4];
+        trimmedR1 = item[5];
+        trimmedR2 = item[6];
+        demultiplexed = item[7];
+        SampleName = demultiplexed.toString().replaceAll(/.fastq.gz/, '').replaceAll(/.*\//, '');
+        files.collect { onefile -> return [ RunID, LibraryID, SampleID, R1len,
+                                            BU_ptrn, SampleName, trimmedR1,
+                                            trimmedR2, demultiplexed ] }
+    }
+    .unique()
+    .combine(sampleTab, by : [0, 1, 2, 3, 4, 5])
+    .set{ demultiplexFiles }
 
 /* ----------------------------------------------------------------------------
 * Map demultiplexed reads to reference genome with STAR
@@ -392,8 +397,8 @@ process mapWithStar {
                 overwrite: true
 
     input:
-    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, pos, SampleName, Specie, 
-          Genome, trimmedR1, trimmedR2, demultiplexfq from demultiplexFiles
+    tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, SampleName, trimmedR1,
+          trimmedR2, demultiplexfq, pos, Specie, Genome from demultiplexFiles
 
     output:
     tuple RunID, LibraryID, SampleID, R1len, BU_ptrn, pos, SampleName, Specie, 
@@ -467,7 +472,7 @@ mappingStatsAggr
 process countReads {
     label 'high_memory'
 
-    publishDir "${outputDir}/counts/${LibraryID}/${SampleID}",
+    publishDir "${outputDir}/countTables/${LibraryID}/${SampleID}",
                mode: 'copy', pattern: '{*.detailed.txt}', overwrite: true
 
     input:
@@ -484,9 +489,12 @@ process countReads {
     shell:
     '''
     umiLen=$((!{R1len} - 10)) 
+    # get run - specific barcode file (created above)
+    barcodeFile=!{usedBarcodeDir}/!{RunID}_!{LibraryID}_!{SampleID}.txt
+
     gtfPath=`find !{genomePath}'/'!{Specie}'/'!{Genome} | grep .gtf$`
     java -jar -Xmx2g !{params.brbseqTools} CreateDGEMatrix -f !{trimmedR1} \
-         -b !{mappedBam} -c !{params.barcodefile} -o "." \
+         -b !{mappedBam} -c $barcodeFile -o "." \
          -gtf $gtfPath -UMI $umiLen -p !{BU_ptrn} 
    
     samplName=`basename !{mappedBam} | sed 's/_Aligned.sortedByCoord.out.bam/.count/g'`
