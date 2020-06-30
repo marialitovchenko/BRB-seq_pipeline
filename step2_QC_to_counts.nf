@@ -165,13 +165,16 @@ sampleTabCh
     .map{ row -> tuple(row.RunID, row.LibraryID, row.SampleID, row.R1len, 
                        row.BU_ptrn, row.pos, row.SampleName, row.Specie,
                        row.Genome) }
-    .into{ sampleTab; fqForQCtrim; forRunBarcodeTabs}
+    .into{ sampleTab; fqForQCtrim; barcodesPerRun}
 
 // sampleTab will have the full information about submitted samples, and 
 // fqForQCtrim will only have info determining unique fastq files. This is done
 // in order to restrict number of QC and trimming processes only to the 
-// nessecary ones, without repetition.
+// nessecary ones, without repetition. barcodesPerRun will be further used to 
+// only select barcodes which were used for sample multiplexing.
 
+// groupTuple assures that there is no occasional slipage between the different
+// lines coming from the table, nextflow has it time to time.
 fqForQCtrim.flatMap { item ->
         RunID = item[0];
         LibraryID = item[1];
@@ -181,8 +184,9 @@ fqForQCtrim.flatMap { item ->
         collect { onefile -> return [ RunID, LibraryID, SampleID, R1len,
                             BU_ptrn ] }
     }
+    .groupTuple(by : [0, 1, 2, 3, 4])
     .unique()
-    .set{uniq_fqForQCtrim}
+    .set{ uniq_fqForQCtrim }
 
 // read in avaible barcodes
 barcodeTabCh = Channel.fromPath( params.barcodefile  )
@@ -190,8 +194,11 @@ barcodeTabCh
     .splitCsv(header: true, sep:'\t')
     .map{ row -> tuple(row.Name, row.B1) }
     .set{ barcodeTab}
-// create a map telling which barcodes were used per sample
-forRunBarcodeTabs
+// create a map telling which barcodes were used per sample and output it to a
+// file. But header is missing! groupTuple assures that there is no occasional 
+// slipage between the different lines coming from the table, nextflow has it 
+// time to time.
+barcodesPerRun
   .flatMap { item ->
         RunID = item[0];
         LibraryID = item[1];
@@ -199,9 +206,7 @@ forRunBarcodeTabs
         Name = item[5];
         collect { onefile -> return [ Name, RunID, LibraryID, SampleID ] }
     }
-    .set{barcodesPerRun}
-// 
-barcodesPerRun
+    .groupTuple(by : [0, 1, 2, 3])
     .combine(barcodeTab, by : 0)
     .collectFile(storeDir: usedBarcodeDir) { item ->
       [ "${item[1]}_${item[2]}_${item[3]}.txt", 
@@ -338,9 +343,14 @@ process demultiplex {
 
     shell:
     '''
+    # calculate UMI length
     umiLen=$((!{R1len} - 10)) 
+    # get run - specific barcode file (created above) and add header to it
+    barcodeFile=!{usedBarcodeDir}/!{RunID}_!{LibraryID}_!{SampleID}.txt
+    echo 'Name\tB1' | cat - $barcodeFile > temp && mv temp $barcodeFile
+
     java -jar !{params.brbseqTools} Demultiplex -r1 !{trimmedR1} \
-              -r2 !{trimmedR2} -c !{params.barcodefile} -o "." \
+              -r2 !{trimmedR2} -c $barcodeFile -o "." \
               -UMI $umiLen -p !{BU_ptrn}
     mv !{pos}'.fastq.gz' !{SampleName}.'fastq.gz'
     '''
