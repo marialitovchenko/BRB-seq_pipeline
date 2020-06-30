@@ -15,15 +15,30 @@ params:
   args: inputArgs
 ---
 
+<style>
+.column-left{
+  float: left;
+  width: 50%;
+  text-align: left;
+}
+.column-right{
+  float: right;
+  width: 50%;
+  text-align: left;
+}
+</style>
+
 ```{r markdown_setup, include = FALSE}
 knitr::opts_chunk$set(echo = F)
-inputArgs <- c('test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt',
+inputArgs <- c('Test User', 'Test PI', 'NXT0570', 'nxid13448', 'BRB_AM_100',
+               'danio_rerio', 'GRCz11.100_GFP', 'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt',
                'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt', 
                'test_input/BRBseq_v3_plate_1_S25_R2_001.fastq.gz_trimming_report.txt',
                'test_input/BRBseq_v3_plate_1_S25_val_1_fastqc/fastqc_data.txt',
                'test_input/stats.txt', 'test_input/mapStatsTab.csv',
                'test_input/NXT0570_nxid13444_GRCz11.100_GFP_BRB_AM_50_readsCombined.csv')
-names(inputArgs) <- c('fastqcR1', 'fastqcR2', 'trimInfoR2', 'fastqcTrimR2',
+names(inputArgs) <- c('User', 'PI', 'RunID', 'LibraryID', 'SampleID', 'Specie',
+                      'Genome', 'fastqcR1', 'fastqcR2', 'trimInfoR2', 'fastqcTrimR2',
                       'demultStats', 'mapStats', 'countTab')
 ```
 
@@ -152,9 +167,14 @@ plotPerBaseQuality_plotly <- function(dtToPlot, plotTitle = '') {
                 marker = list(symbol = 'line-ew-open', color = 'black'),
                 error_y = ~list(symmetric = F, color = 'black',
                                 arrayminus = Median - `10th Percentile`,
-                                array = `90th Percentile` - Median)) %>% 
+                                array = `90th Percentile` - Median),
+                text = ~ paste0("Base: ", Base, "\nMedian quality: ", Median), 
+                hoverinfo = "text") %>% 
                 add_trace(x = ~Base, y = ~Mean, type="scatter", mode = "lines",
-                line = list(color = 'blue'))
+                line = list(color = 'blue'),
+                text = ~ paste0("Base: ", Base, "\nMean quality: ", 
+                                round(Mean, 2)), 
+                hoverinfo = "text")
   fig <- fig %>%
          layout(fig, title = plotTitle, showlegend = F, 
                 font = alitheaPlotlyFont,
@@ -213,7 +233,10 @@ plotAdapterContent_plotly <- function(dtToPlot, plotTitle = '') {
   dtToPlot <- melt(copy(dtToPlot), 'Position')
   fig <- plot_ly(data = dtToPlot) %>% 
     add_trace(x = ~Position, y = ~value, type = "scatter", 
-              color = ~variable, mode = "lines")
+              color = ~variable, mode = "lines",
+              text = ~ paste0("Adapter: ", variable, "\nBase: ", Position, 
+                              "\n%: ", round(value, 2)),
+              hoverinfo = "text")
   fig <- fig %>%
     layout(fig, title = plotTitle, font = alitheaPlotlyFont,
            xaxis = append(alitheaPlotlyAxis,
@@ -348,7 +371,7 @@ plotBarChart_plotly <- function(dtToPlot, mode = 'Reads', xAxisTitle,
   byName$y <- factor(byName$y, levels = sort(byName$y, decreasing = T))
   
   # buttons
-  yAxisform <- append(alitheaPlotlyAxis, list(title = 'Sample'))
+  yAxisform <- append(alitheaPlotlyAxis, list(title = 'Sample', dtick = 1))
   yAxisREform <- append(yAxisform,
                         list(categoryorder = "array",
                              categoryarray = levels(byName$y)))
@@ -364,12 +387,17 @@ plotBarChart_plotly <- function(dtToPlot, mode = 'Reads', xAxisTitle,
   
   fig <- plot_ly() %>% 
     add_trace(data = byPerc, x = ~x, y = ~y, type = "bar", visible = T,
-              marker = list(color = basicColor)) %>%
+              marker = list(color = basicColor),
+              text = ~ paste0("Sample: ", y, "\nValue: ", round(x, 2)),
+              hoverinfo = "text") %>%
     add_trace(data = byName, x = ~x, y = ~y, type = "bar", visible = F,
-              marker = list(color = basicColor)) %>%
+              marker = list(color = basicColor),
+              text = ~ paste0("Sample: ", y, "\nValue: ", round(x, 2)),
+              hoverinfo = "text") %>%
     layout(updatemenus = updatemenus, title = plotTitle, showlegend = F,
            font = alitheaPlotlyFont,
-           yaxis = append(alitheaPlotlyAxis, list(title = 'Sample')),
+           yaxis = append(alitheaPlotlyAxis, 
+                          list(title = 'Sample', dtick = 1)),
            xaxis = append(alitheaPlotlyAxis,
                           list(title = xAxisTitle, tick0 = 0, showgrid = T)))
   
@@ -387,7 +415,10 @@ plotDemultiplexPlate_plotly <- function(dtToPlot, plotTitle) {
               type = 'scatter', mode = 'markers', 
               text = ~paste0(Percent, '%'),
               marker = list(size = ~10 * Percent, color = basicColor,
-                            opacity = 1)) %>%
+                            opacity = 1),
+              text = ~ paste0("Sample: ", Barcode, "\nValue: ",
+                              round(Percent, 2)),
+              hoverinfo = "text") %>%
     layout(title = plotTitle, showlegend = F,
            font = alitheaPlotlyFont,
            xaxis = append(alitheaPlotlyAxis,
@@ -501,7 +532,7 @@ createButtons <- function(dataList, statSortedBy, visibilityList) {
   changedYaxisTickLabs <- dataList[[statSortedBy]][[statSortedBy]]$SubSample
   changedYaxisTickLabs <- levels(changedYaxisTickLabs)
   changedYaxis <- list(title = 'Sample', categoryorder = "array",
-                       categoryarray = changedYaxisTickLabs)
+                       categoryarray = changedYaxisTickLabs, dtick = 1)
   list(label = statSortedBy, method = "update",
        args = list(list(visible = visibilityList),
                    list(yaxis = append(alitheaPlotlyAxis,
@@ -524,7 +555,10 @@ addAllBarChartTraces <- function(figToAdd, dataList, statSortedBy, plotColors,
                         x = ~Value, y = ~SubSample, 
                         type = 'bar', name = statSortedBy,
                         marker = list(color = plotColors[statSortedBy]),
-                        visible = visibility)
+                        visible = visibility,
+                        text = ~ paste0(statSortedBy, " in ", SubSample,
+                                        "\n", round(Value, 2)),
+                        hoverinfo = "text")
   
   otherStats <- names(dataList[[statSortedBy]])
   otherStats <- otherStats[otherStats != statSortedBy]
@@ -534,7 +568,10 @@ addAllBarChartTraces <- function(figToAdd, dataList, statSortedBy, plotColors,
                           x = ~Value, y = ~SubSample, 
                           type = 'bar', name = oneMapStat,
                           marker = list(color = plotColors[oneMapStat]),
-                          visible = visibility)
+                          visible = visibility,
+                          text = ~ paste0(oneMapStat, " in ", SubSample,
+                                        "\n", round(Value, 2)),
+                          hoverinfo = "text")
   }
   figToAdd
 }
@@ -596,8 +633,8 @@ plotMappingStats_plotly <- function(dtToPlot, plotTitle) {
   }
   # add buttons
   fig <- fig %>% layout(updatemenus = updatemenus, title = plotTitle,
-                        yaxis = append(alitheaPlotlyAxis,
-                                       list(title = 'Sample')), 
+                        yaxis = append(alitheaPlotlyAxis, 
+                                       list(title = 'Sample', dtick = 1)), 
                         barmode = 'stack', annotations = annot, 
                         legend = list(x = 100, y = 0))
   fig
@@ -751,51 +788,96 @@ countsRawPCA <- calcPCA(countTab[, -2:-1])
 countsNormPCA <- calcPCA(countsNormVoom[, -2:-1])
 ```
 
+```{r calcPlotHeigth, include = FALSE}
+sampleNumb <- length(unique(demultiplexStats[[2]]$Barcode))
+mapStatsHeigth <- max(4.5, 0.116 * sampleNumb + 0.75)
+mapPlotHeigth <- max(1, 0.113 * sampleNumb + 1)
+```
+
+# Submission information
+
+Please use the information below in communication with Alithea Genomics in case
+of further questions and concerns regarding the analysis:<br/>
+
+<div class = "row">
+<div class = "col-md-6">
+<span style="color: #3A89C9;">**User name: **</span> `r inputArgs['User']`<br/>
+<span style="color: #3A89C9;">**PI name: **</span> `r inputArgs['PI']`<br/>
+<span style="color: #3A89C9;">**Sequencing run ID: **</span> `r inputArgs['RunID']`<br/>
+<span style="color: #3A89C9;">**Sequencing library ID: **</span> `r inputArgs['LibraryID']`<br/>
+<span style="color: #3A89C9;">**Sequencing sample ID: **</span> `r inputArgs['SampleID']` 
+</div>
+<div class = "col-md-6">
+This sequencing run was aligned to:<br/>
+<span style="color: #3A89C9;">**Specie: **</span> `r inputArgs['Specie']`<br/>
+<span style="color: #3A89C9;">**Genome version: **</span> `r inputArgs['Genome']`<br/>
+</div>
+</div>
+
 # Quality control of the raw sequencing data
+
 ## General information
+Table below presents technical infomation about current sequencing run. Alithea
+Genomics uses modified Illumina paired end sequencing technology: read 1 (R1)
+contains information about a sample RNA molucule is coming from and its unique
+identified and read 2 contains sequence of RNA molecule. Typical read 1 length 
+is 20 - 21 bp, and typical read 2 length is 75bp.
 
 ```{r generalInfo, results = 'asis'}
 kable(basicStats, caption = 'Information about sequencing')
 ```
 
 ## Per-base sequence quality {.tabset}
-The plot below displays quality scores across read length for read 1 (barcodes)
-and read 2 (actual RNA).
+The plot below displays quality scores across read length for read 1 and 
+read 2. Quality scores above 20 (yellow and green areas) are acceptable for the
+further mapping to reference genome. Bad sequence quality is most likely caused
+by the sequencing failure. Bases with the sequencing quality below 20 will be 
+trimmed futher downstream in the analysis. Trimmed reads which length will be 
+below 21bp will be removed from further analysis.
 
-Bad sequence quality
-most likely caused by the sequencing machine failure
-or tagmentation
-
-###R1
+###Read 1
 ```{r perBaseQC_R1, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotPerBaseQuality_plotly(perBaseQC_R1, 'Per base quality for R1')
 ```
 
-###R2
+###Read 2
 ```{r perBaseQC_R2, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotPerBaseQuality_plotly(perBaseQC_R2, 'Per base quality for R2')
 ```
 
 ## Adapter content{.tabset}
+The plot below displays adapter contamination across read length for read 1 and
+read 2. Flat line indistinguashable from x-axis shows absence of adapter 
+contamination. Adapter contamination most commonly arises due to 
+overtagmentation. Adapter removal can improve mapping efficiency and will be 
+conducted during the analysis below.
 
-Adapter contamination
-
-###R1
+###Read 1
 ```{r adapterQC_R1, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotAdapterContent_plotly(adapters_R1, 'Adapter contamination in R1')
 ```
 
-###R2
+###Read 2
 ```{r adapterQC_R2, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotAdapterContent_plotly(adapters_R2, 'Adapter contamination in R2')
 ```
 
 
 # Trimming results
+During trimming procedure bases of the reads with the quality < 20 are removed.
+Bases matching adapter sequences are also removed. Therefore, reads become 
+shorter. Reads with length of < 21 are removed from the set. Due to this, 
+number of  reads is decreased.
 
->Important note: R1 is not trimmed. 
+>Important note: read 1 is not trimmed, only read 2 is trimmed.
 
 ## Table
+Table below presents overview of the trimming statistics, such as number of 
+reads with adapters and quality trimmed reads. Row "Number of sequence pairs
+removed because at least one read was shorter than the length cutoff" gives a 
+precise number and percentage of how many reads were removed from the set
+due to either bad quality of bases or adapter contamination.
+
 ```{r trimmingTable, results = 'asis'}
 trimInf_R2 <- as.data.table(readInTrimmingInfo(inputArgs['trimInfoR2']))
 setnames(trimInf_R2, 'Value', 'R2')
@@ -804,53 +886,85 @@ kable(trimInf_R2, caption = 'Trimming statistics')
 ```
 
 ## Per-base sequence quality
-After trimming
+The plot below displays quality scores across read length for read 2 after 
+trimming was completed. Trimming should remove bad quality bases, and blue line
+depicting mean quality per base should be higher.
 
-### R2
+### Read 2
 ```{r perBaseTrimQC_R2, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotPerBaseQuality_plotly(perBaseQCtrim_R2, 'Per base quality for R2')
 ```
 
 ## Adapter content 
 
-### R2
+The plot below displays adapter contamination across read length for read 1 and
+read 2 after trimming. Upon successfull trimming, line depicting adapter 
+contamination should be barely distinguiashable from x-axis. Read 1 is not show
+because trimming on it was not performed.
+
+### Read 2
 ```{r adapterTrimQC_R2, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotAdapterContent_plotly(adaptersTrim_R2, 'Adapter contamination in R1')
 ```
 
 # Demultiplexing {.tabset}
+Table below presents an overview of the results of the demultiplexing 
+procedure. Usually about 5% of the reads are lost at this step due to various
+reasons such as poor barcode base quality.
 
 ```{r demultiplexStats, results = "asis"}
 kable(demultiplexStats[[1]], caption = 'Overview of demultiplexing')
 ```
 
 ## Bar plot
-```{r demultiplexStatsPlot, fig.height = 12, fig.width = 8.5, fig.align = "left"}
+
+The chart below depicts a distribution of the percentage of total reads 
+allocated per sample. A two fold variation is expected and normal.
+
+```{r demultiplexStatsPlot, fig.height = mapPlotHeigth, fig.width = 8.5, fig.align = "left"}
 plotBarChart_plotly(demultiplexStats[[2]], 'Percent', '% of reads per sample',
                     'Demultiplexing results')
 ```
 
 ## Plate view
+
+The chart below depicts a distribution of the percentage of total reads 
+allocated per sample as loaded on the plate. It can help you to determine if 
+sequencing bias can be explained based on plate position.
+
 ```{r demultiplexPlatePlot, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotDemultiplexPlate_plotly(demultiplexStats[[2]], 
                             '% of reads per sample, plate view')
 ```
 
-
 # Mapping {.tabset}
 
+Mapping of the data was performed using STAR v.2.7.3a and number of uniquely
+mapped reads, mapped to too many loci reads, not mapped reads, etc was 
+assessed.
+
 ## Barplot - raw values
-```{r mapStatsPlot, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+This bar plot shows mapping statistics across samples as total number of reads.
+Hover over the bars to see the actual numbers.
+
+```{r mapStatsPlot, fig.height = mapStatsHeigth, fig.width = 8.5, fig.align = "left"}
 plotMappingStats_plotly(mapStatTab, 'Overview of mapping statistics')
 ```
 
 ## Barplot - percentages
-```{r mapStatsPlotPerc, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+This bar plot shows mapping statistics across samples in percentages.
+Hover over the bars to see the actual numbers. Typical percentage of uniquely
+mapped reads is around 75%.
+
+```{r mapStatsPlotPerc, fig.height = mapStatsHeigth, fig.width = 8.5, fig.align = "left"}
 plotMappingStats_plotly(convertMapStatsToPerc(mapStatTab), 
                         'Overview of mapping statistics (in %)')
 ```
 
 ## Table 
+A table representation of the mapping statistics. It is also avaible as a
+separate file.
+
 ```{r mapStatsTab, results = 'asis'}
 kable(mapStatTab, caption = 'Mapping statistics') %>%
       kable_styling(bootstrap_options = c("striped", "hover", "condensed",
@@ -860,21 +974,34 @@ kable(mapStatTab, caption = 'Mapping statistics') %>%
 
 # Exonic reads {.tabset}
 
+Number of exonic reads were assesed as sum of all reads assigned to genes.
+
 ## Number of reads
-```{r exonicReads, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+
+The bar chart below presents raw number of reads per sample assigned to exons.
+
+```{r exonicReads, fig.height = mapPlotHeigth, fig.width = 8.5, fig.align = "left"}
 plotBarChart_plotly(exonicReads, mode = 'Reads', 
                     'Number of exonic reads per sample',
                     'Number of exonic reads per sample')
 ```
 
 ## % from uniquely mapped
-```{r exonicReadsPerc, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+
+The bar chart below presents percentage of reads assigned to exons from the 
+uniquely mapped ones per sample.
+
+```{r exonicReadsPerc, fig.height = mapPlotHeigth, fig.width = 8.5, fig.align = "left"}
 plotBarChart_plotly(exonicReads, mode = 'Percent',  
                     '% of exonic reads per sample',
                     '% of exonic reads per sample')
 ```
 
 ## Table 
+
+A table representation of the number and percentage of the exonic reads per 
+sample. It is also avaible in the separate file.
+
 ```{r exonicReadsTab, results = 'asis'}
 colnames(exonicReads) <- c('Sample', 'Number of reads',
                            '% from uniquely mapped')
@@ -886,21 +1013,28 @@ kable(exonicReads, caption = 'Exonic reads') %>%
 
 # Number of expressed genes {.tabset}
 
+Number of expressed genes was calculated as number of genes with more than 1 
+(or 10) reads assigned per gene.
+
 ## > 1 read per gene
-```{r numbExprGenes1, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+Number of genes with > 1 read assigned per gene
+```{r numbExprGenes1, fig.height = mapPlotHeigth, fig.width = 8.5, fig.align = "left"}
 plotBarChart_plotly(numbExprGenes1, mode = 'NumbGenes', 
                     'Number of genes with > 1 reads', 
                     'Number of genes')
 ```
 
 ## > 10 reads per gene
-```{r numbExprGenes10, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+Number of genes with > 10 reads assigned per gene
+```{r numbExprGenes10, fig.height = mapPlotHeigth, fig.width = 8.5, fig.align = "left"}
 plotBarChart_plotly(numbExprGenes10, mode = 'NumbGenes',  
                     'Number of genes with > 10 reads',
                     'Number of genes')
 ```
 
 ## Table
+Table representation of the number of expressed genes (> 1 read assigned per 
+gene).
 ```{r NumbGenesTab, results = 'asis'}
 colnames(numbExprGenes1) <- c('Sample', 'Number of genes')
 kable(numbExprGenes1, caption = 'Number of genes with > 1 read') %>%
@@ -910,13 +1044,20 @@ kable(numbExprGenes1, caption = 'Number of genes with > 1 read') %>%
 ```
 
 # PCA {.tabset}
+Principle Component Analysis (PCA) was performed on raw (integer) count table
+and on normalized for sequencing depth count table. Comparison of the two plots
+below will help you to determine the gravity of the sequencing depth's effect 
+on you data. Percentages in the axis names signify percentage of variation 
+expained by a principle component.
 
 ## raw counts 
+PCA based on raw (integer) counts
 ```{r pcaRaw, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotPCA_plotly(countsRawPCA, 'PCA based on raw counts')
 ```
 
 ## normalized data
+PCA based on normalized for sequencing depth data
 ```{r PcaNorm, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotPCA_plotly(countsNormPCA, 'PCA based on normalized counts')
 ```
