@@ -2,13 +2,4 @@ put fool defense: if not all cells in the input table are filled, if there is no
 
 check, that library ID is unique and all combinations of IDs I give a name to
 
-put proper adapter sequences to cut adapt, they are only in R2
--b GTCTCGTGGGCTCGG -b TCGTCGGCAGCGTC -b AGATGTGTATAAGAGA -b TCTCTTATACACATCT
-13:39
--G ^AAGCAGTGGTATCAACGCAGAGTACATGGG -B "A{150}"
--m 20
-
 in the R script, give all parameters for the run at the end
-
-add UMI and UMI - barcode pattern to the table
-better grid (carousel) for plots?
