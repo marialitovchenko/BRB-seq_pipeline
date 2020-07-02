@@ -30,10 +30,10 @@ params:
 
 ```{r markdown_setup, include = FALSE}
 knitr::opts_chunk$set(echo = F)
-inputArgs <- c('Test User', 'Test PI', 'NXT0570', 'nxid13448', 'BRB_AM_100',
+inputArgs <- c('Test User', 'Test PI', 'NXT0540', 'nxid12916', 'BRBseq_v3_plate_1_S25',
                'danio_rerio', 'GRCz11.100_GFP', 'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt',
                'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt', 
-               'test_input/BRBseq_v3_plate_1_S25_R2_001.fastq.gz_trimming_report.txt',
+               'test_input/cutadapt_trimming_report.txt',
                'test_input/BRBseq_v3_plate_1_S25_val_1_fastqc/fastqc_data.txt',
                'test_input/stats.txt', 'test_input/mapStatsTab.csv',
                'test_input/NXT0570_nxid13444_GRCz11.100_GFP_BRB_AM_50_readsCombined.csv')
@@ -257,11 +257,10 @@ plotAdapterContent_plotly <- function(dtToPlot, plotTitle = '') {
 #' @return data table with 2 columns
 readInTrimmingInfo <- function(filePath) {
   # lines of interest
-  LOI <- c('Adapter sequence', 'Total reads processed', 
-           'Reads with adapters', 'Reads written',
-           'Total basepairs processed', 'Quality-trimmed',
-           'Total written',
-           'Number of sequence pairs removed because')
+  LOI <- c('Sequence:', 'Total read pairs processed:', 
+           'Read 2 with adapter:', 'Pairs written (passing filters):',
+           'Total basepairs processed:', 'Quality-trimmed:',
+           'Total written')
   LOI <- paste(LOI, collapse = "|")
 
   # connection to the file
@@ -274,7 +273,7 @@ readInTrimmingInfo <- function(filePath) {
   result <- c()
   for (oneLine in allLines){
     if (grepl(LOI, oneLine)) {
-      result <- c(result, oneLine)
+      result <- c(result, gsub(';.*', '', gsub('^ +', '', oneLine)))
     }
   }
   close(connect)
@@ -439,8 +438,6 @@ readMapStatTab <- function(mappingStatsPath) {
   # Names of the columns
   idColNames <- c('RunID', 'LibraryID', 'SampleID', 'Specie', 'Genome', 
                   'SubSample')
-  #idColNames <- c('RunID', 'LibraryID', 'SampleID', 'pos', 'SampleName',
-  #                'Specie', 'Genome')
   statNames <- c(idColNames, 'total reads', 'uniquely mapped', 
                  'mapped to mult. loci', 'mapped to too many loci',
                  'NOT mapped - mismatches', 'NOT mapped - too short',
@@ -730,6 +727,8 @@ demultiplexStats <- readDemultiplexInfo(inputArgs['demultStats'])
 
 # mapping statistics
 mapStatTab <- readMapStatTab(inputArgs['mapStats'])
+mapStatTab <- mapStatTab[RunID == inputArgs['RunID'] &
+                         LibraryID == inputArgs['LibraryID']]
 
 # count table 
 countTab <- fread(inputArgs['countTab'])

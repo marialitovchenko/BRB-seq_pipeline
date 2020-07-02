@@ -278,26 +278,19 @@ process trimReads {
     R2path=$(find !{userDir}'/'!{RunID} -type f | grep !{LibraryID} | \
              grep !{SampleID} | grep !{params.R2code} | \
              grep "!{params.fastqExtens}")
+
     # perform trimming with trim galore ONLY ON R2 because we lose a lot of 
     # reads if we trim R1
-    trim_galore $R2path --length !{R1len} \
-                --basename !{SampleID} !{params.trimGalore_allParams}
-    # while trimming, some of the reads in R2 became shorter than 20 (or 21) bp
-    # we need to remove corresponding reads from R1 too
-    R2trimmed=$(find . -type f | grep !{SampleID} | \
-                grep '_trimmed.fq.gz')
     R1result=$(basename $R1path | sed 's/[.].*//g')
-    R1result=$(echo $R1result"_val_1.fq")
+    R1result=$(echo $R1result"_val_1.fq.gz")
     R2result=$(basename $R2path | sed 's/[.].*//g')
-    R2result=$(echo $R2result"_val_2.fq")
-    perl !{params.pairfq_lite} makepairs -f $R1path -r $R2trimmed -fp $R1result \
-                         -rp $R2result -fs 'R1_singletone.fq' \
-                         -rs 'R2_singletone.fq'
-    rm R1_singletone.fq R2_singletone.fq
-    gzip $R1result
-    gzip $R2result
-    fastqc $R1result".gz"
-    fastqc $R2result".gz"
+    R2result=$(echo $R2result"_val_2.fq.gz")
+    reportFile=!{RunID}'_'!{LibraryID}'_'!{SampleID}'_trimming_report.txt'
+    cutadapt !{params.cutadapt_allParams} --minimum-length=!{R1len} \
+             -o $R1result -p $R2result $R1path $R2path 1>$reportFile
+
+    # perform fastqc
+    fastqc $R1result $R2result
     '''
 }
 
@@ -472,7 +465,7 @@ mappingStatsAggr
 process countReads {
     label 'high_memory'
 
-    publishDir "${outputDir}/countTables/${LibraryID}/${SampleID}",
+    publishDir "${outputDir}/counts/${LibraryID}/${SampleID}",
                mode: 'copy', pattern: '{*.detailed.txt}', overwrite: true
 
     input:
