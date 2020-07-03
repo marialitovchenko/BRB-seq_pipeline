@@ -25,14 +25,15 @@ cmdArgs <- commandArgs(trailingOnly = T)
 # exctract path to markdown script straight away
 markdownScript <- cmdArgs[1]
 cmdArgs <- cmdArgs[-1]
-#cmdArgs <- c('Test User', 'Test PI', 'theResult', 'NXT0570', 'nxid13448',
-#             'BRB_AM_100', 'danio_rerio', 'GRCz11.100_GFP')
+
 names(cmdArgs) <- c('User', 'PI', 'ResultFolder', 'RunID', 'LibraryID', 
-                    'SampleID', 'Specie', 'Genome')
+                    'SampleID', 'Specie', 'Genome', 'submissionTab')
+
+subFolders <- paste(cmdArgs['RunId'], cmdArgs['LibraryID'], 
+                    cmdArgs['SampleID'], sep = '/') 
 
 # get fastqc text report for R1 and R2: we need to unzip them first
-fastqcDir <- paste(cmdArgs['ResultFolder'], 'fastQC', cmdArgs['LibraryID'], 
-                   cmdArgs['SampleID'], sep = '/')
+fastqcDir <- paste(cmdArgs['ResultFolder'], 'fastQC', subFolders, sep = '/')
 fastqcR1zip <- list.files(fastqcDir, pattern = '_R2_.*zip$', full.names = T) 
 fastqcR2zip <- list.files(fastqcDir, pattern = '_R2_.*zip$', full.names = T) 
 system(paste('unzip -d', fastqcDir, '-u', fastqcR1zip))
@@ -43,8 +44,7 @@ fastqcR2file <- list.files(gsub('.zip', '/', fastqcR2zip),
                            pattern = 'fastqc_data.txt', full.names = T)
 
 # get trimming report from trim_galore and fastqc for trimmed R2
-trimDir <-  paste(cmdArgs['ResultFolder'], 'trimmed', cmdArgs['LibraryID'],
-                   cmdArgs['SampleID'], sep = '/')
+trimDir <-  paste(cmdArgs['ResultFolder'], 'trimmed', subFolders, sep = '/')
 trimRepR2 <- list.files(trimDir, pattern = '_trimming_report.txt$', 
                         full.names = T)
 trimFastqcR2 <- list.files(trimDir, pattern = 'val_2_fastqc.zip$', 
@@ -55,8 +55,7 @@ trimFastqcR2 <- list.files(gsub('.zip', '/', trimFastqcR2),
 
 # demultiplexing statistics
 demultiplStatsFile <-  paste(cmdArgs['ResultFolder'], 'demultiplexed', 
-                             cmdArgs['LibraryID'], cmdArgs['SampleID'], 
-                             'stats.txt', sep = '/')
+                             subFolders, 'stats.txt', sep = '/')
 # mapping statistics
 mapStatsFile <- paste(cmdArgs['ResultFolder'], 'mapStatsTab.csv', sep = '/')
 # count table
@@ -69,7 +68,8 @@ countTabFile <- paste0(cmdArgs['ResultFolder'], '/countTables/',
 inputArgs <- c(cmdArgs, fastqcR1file, fastqcR2file, trimRepR2, trimFastqcR2, 
                demultiplStatsFile, mapStatsFile, countTabFile)
 names(inputArgs) <- c('User', 'PI', 'RunID', 'LibraryID', 'SampleID', 'Specie',
-                      'Genome', 'fastqcR1', 'fastqcR2', 'trimInfoR2', 'fastqcTrimR2',
-                      'demultStats', 'mapStats', 'countTab')
+                      'Genome', 'submissionTab', 'fastqcR1', 'fastqcR2', 
+                      'trimInfoR2', 'fastqcTrimR2', 'demultStats', 'mapStats',
+                      'countTab')
 system(paste0("R -e \"rmarkdown::render(\'", markdownScript,
               "\')\" --args ", paste(inputArgs, collapse = ' ')))

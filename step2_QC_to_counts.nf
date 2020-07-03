@@ -256,7 +256,7 @@ process qcCheck {
     fastqcRes=$(find !{userDir}'/'!{RunID} -type f | grep !{LibraryID} | \
                 grep !{SampleID} | grep -E "zip")
     # target dir
-    targetDir=!{outputDir}"/fastQC/"!{LibraryID}"/"!{SampleID}
+    targetDir=!{outputDir}"/fastQC/"!{RunID}"/"!{LibraryID}"/"!{SampleID}
     mkdir -p $targetDir
     mv $fastqcRes $targetDir
     '''
@@ -268,9 +268,9 @@ process qcCheck {
 process trimReads {
     label 'low_memory'
 
-    publishDir "${outputDir}/trimmed/${LibraryID}/${SampleID}",
+    publishDir "${outputDir}/trimmed/${RunID}/${LibraryID}/${SampleID}",
                    mode: 'copy', pattern: '*_val_*.fq.gz', overwrite: true
-    publishDir "${outputDir}/trimmed/${LibraryID}/${SampleID}",
+    publishDir "${outputDir}/trimmed/${RunID}/${LibraryID}/${SampleID}",
                    mode: 'copy', pattern: '*.{txt,zip}', overwrite: true
 
     input:
@@ -330,7 +330,7 @@ process trimReads {
 process demultiplex {
     label 'mid_memory'
 
-    publishDir "${outputDir}/demultiplexed/${LibraryID}/${SampleID}",
+    publishDir "${outputDir}/demultiplexed/${RunID}/${LibraryID}/${SampleID}",
                 mode: 'copy', pattern: '*.{fastq.gz,txt}', overwrite: true
 
     input:
@@ -395,10 +395,10 @@ demultiplexBundle
 process mapWithStar {
     label 'high_memory'
 
-    publishDir "${outputDir}/mapped/${LibraryID}/${SampleID}", 
+    publishDir "${outputDir}/mapped/${RunID}/${LibraryID}/${SampleID}", 
                mode: 'copy', pattern: '*.sortedByCoord.out.bam',
                overwrite: true
-    publishDir "${outputDir}/mapStats/${LibraryID}/${SampleID}", 
+    publishDir "${outputDir}/mapStats/${RunID}/${LibraryID}/${SampleID}", 
                 mode: 'copy', pattern: '*_Log.final.out',
                 overwrite: true
 
@@ -478,7 +478,7 @@ mappingStatsAggr
 process countReads {
     label 'high_memory'
 
-    publishDir "${outputDir}/counts/${LibraryID}/${SampleID}",
+    publishDir "${outputDir}/counts/${RunID}/${LibraryID}/${SampleID}",
                mode: 'copy', pattern: '{*.detailed.txt}', overwrite: true
 
     input:
@@ -676,7 +676,7 @@ process generateUserReport {
   '''
   Rscript !{params.compile_report} !{params.markdown} !{user} !{pi} \
           !{outputDir} !{RunID} !{LibraryID} !{SampleID} \
-          !{Specie} !{Genome}
+          !{Specie} !{Genome} !{sampleTabPath}
   '''
 }
 
