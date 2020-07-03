@@ -1,7 +1,7 @@
 ---
-title: "Data analysis report"
-author: "by Alithea Genomics"
-date: "6/17/2020"
+title: "`r paste0('Data analysis report of run ', commandArgs(trailingOnly=T)[3], ', library ', commandArgs(trailingOnly=T)[4])`"
+author: "`r paste0('by Alithea Genomics for ', commandArgs(trailingOnly=T)[1], ' (PI: ', commandArgs(trailingOnly=T)[2])`"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 fontsize: 20pt 
 output:
   rmdformats::readthedown:
@@ -30,13 +30,14 @@ params:
 
 ```{r markdown_setup, include = FALSE}
 knitr::opts_chunk$set(echo = F)
-inputArgs <- c('Test User', 'Test PI', 'NXT0540', 'nxid12916', 'BRBseq_v3_plate_1_S25',
-               'danio_rerio', 'GRCz11.100_GFP', 'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt',
-               'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt', 
-               'test_input/cutadapt_trimming_report.txt',
-               'test_input/BRBseq_v3_plate_1_S25_val_1_fastqc/fastqc_data.txt',
-               'test_input/stats.txt', 'test_input/mapStatsTab.csv',
-               'test_input/NXT0570_nxid13444_GRCz11.100_GFP_BRB_AM_50_readsCombined.csv')
+#inputArgs <- c('Test User', 'Test PI', 'NXT0540', 'nxid12916', 'BRBseq_v3_plate_1_S25',
+#               'danio_rerio', 'GRCz11.100_GFP', #'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt',
+#               'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt', 
+#               'test_input/cutadapt_trimming_report.txt',
+#               'test_input/BRBseq_v3_plate_1_S25_val_1_fastqc/fastqc_data.txt',
+#               'test_input/stats.txt', 'test_input/mapStatsTab.csv',
+#               'test_input/NXT0570_nxid13444_GRCz11.100_GFP_BRB_AM_50_readsCombined.csv')
+inputArgs <- commandArgs(trailingOnly = T)
 names(inputArgs) <- c('User', 'PI', 'RunID', 'LibraryID', 'SampleID', 'Specie',
                       'Genome', 'fastqcR1', 'fastqcR2', 'trimInfoR2', 'fastqcTrimR2',
                       'demultStats', 'mapStats', 'countTab')

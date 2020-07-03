@@ -1,11 +1,36 @@
 #!/usr/bin/env Rscript
 
-cmdArgs <- c('Test User', 'Test PI', 'theResult', 'NXT0570', 'nxid13448', 'BRB_AM_100',
-                 'danio_rerio', 'GRCz11.100_GFP')
+# FILE: compile_report.R ------------------------------------------------------
+#
+# USAGE: Rscript compile_report.R [ARGS]
+#
+# DESCRIPTION: prepares input files needed for Generate_UserReport.Rmd and runs
+#              report generation
+#
+# ARGUMENTS:  1) path to Rmarkdown file 2) user name 3) pi name 4) path to the 
+#             folder with results from nextflow pipeline 5) Run ID 
+#             6) Library ID 7) Sample ID 8) Specie 9) Genome. 
+#             ATTENTION! None of the arguments should have spaces inside them
+# REQUIREMENTS:  ggplot2, data.table, rmarkdown
+# BUGS: --
+# NOTES: --
+# AUTHOR:  Maria Litovchenko, maria.litovchenko@epfl.ch
+# COMPANY:  EPFL, Lausanne, Switzerland
+# VERSION:  1
+# CREATED:  03.07.2020
+# REVISION: 03.07.2020
+
+# Unzip / get paths to files for markdown -------------------------------------
+cmdArgs <- commandArgs(trailingOnly = T)
+# exctract path to markdown script straight away
+markdownScript <- cmdArgs[1]
+cmdArgs <- cmdArgs[-1]
+#cmdArgs <- c('Test User', 'Test PI', 'theResult', 'NXT0570', 'nxid13448',
+#             'BRB_AM_100', 'danio_rerio', 'GRCz11.100_GFP')
 names(cmdArgs) <- c('User', 'PI', 'ResultFolder', 'RunID', 'LibraryID', 
                     'SampleID', 'Specie', 'Genome')
 
-# get fastqc text report for R1 and R2
+# get fastqc text report for R1 and R2: we need to unzip them first
 fastqcDir <- paste(cmdArgs['ResultFolder'], 'fastQC', cmdArgs['LibraryID'], 
                    cmdArgs['SampleID'], sep = '/')
 fastqcR1zip <- list.files(fastqcDir, pattern = '_R2_.*zip$', full.names = T) 
@@ -40,26 +65,11 @@ countTabFile <- paste0(cmdArgs['ResultFolder'], '/countTables/',
                        cmdArgs['Genome'], '_', cmdArgs['SampleID'], 
                        '_readsCombined.csv')
 
-print(fastqcR1file)
-print(fastqcR2file)
-print(trimFastqcR2)
-print(demultiplStatsFile)
-print(mapStatsFile)
-print(countTabFile)
-
-inputArgs <- c('Test User', 'Test PI', 'NXT0570', 'nxid13448', 'BRB_AM_100',
-               'danio_rerio', 'GRCz11.100_GFP', 
-               'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt',
-               'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt',
-               'test_input/BRBseq_v3_plate_1_S25_R2_001.fastq.gz_trimming_report.txt',
-               'test_input/BRBseq_v3_plate_1_S25_val_1_fastqc/fastqc_data.txt',
-               'test_input/stats.txt', 'test_input/mapStatsTab.csv',
-               'test_input/NXT0570_nxid13444_GRCz11.100_GFP_BRB_AM_50_readsCombined.csv')
+# Run Rmarkdown script to generate user report --------------------------------
+inputArgs <- c(cmdArgs, fastqcR1file, fastqcR2file, trimRepR2, trimFastqcR2, 
+               demultiplStatsFile, mapStatsFile, countTabFile)
 names(inputArgs) <- c('User', 'PI', 'RunID', 'LibraryID', 'SampleID', 'Specie',
                       'Genome', 'fastqcR1', 'fastqcR2', 'trimInfoR2', 'fastqcTrimR2',
                       'demultStats', 'mapStats', 'countTab')
-
-# do some sort of processing/error checking
-#  e.g. you could investigate the optparse/getopt packages which
-#   allow for much more sophisticated arguments e.g. named ones.
-rmarkdown::render('test.rmd')
+system(paste0("R -e \"rmarkdown::render(\'", markdownScript,
+              "\')\" --args ", paste(inputArgs, collapse = ' ')))

@@ -3,23 +3,29 @@
 def helpMessage() {
 
     log.info """
-    -      \033[41m B R B - s e q   N E X T F L O W   P I P E L I N E v1.0\033[0m-
+    -      \033[41m A L I T H E A  G E N O M I C S   P I P E L I N E v1.0\033[0m-
     ================================================================================
     Welcome to the Nextflow BRB-seq analysis command line pipeline!
 
     Usage:
     The \033[1;91mtypical\033[0m command for running the pipeline is as follows:
-    nextflow step2_QC_to_counts.nf \033[1;91m--inputTab\033[0m table.csv \\
+    nextflow step2_QC_to_counts.nf \033[1;91m--user\033[0m UserName \\
+                        \033[1;91m--pi\033[0m PiName \\    
+                        \033[1;91m--inputTab\033[0m table.csv \\
                         \033[1;91m--FQdir\033[0m fqDir \\
                         \033[1;91m--genomeDir\033[0m allGenomes \\
                         \033[1;91m--outputDir\033[0m theResult
 
     or
 
-    nextflow forTest.nf --inputTab table.csv
+    nextflow forTest.nf \033[1;91m--user\033[0m UserName \\
+                        \033[1;91m--pi\033[0m PiName \\    
+                        \033[1;91m--inputTab\033[0m table.csv \\
 
     to put the pipeline into \033[1;91mbackground\033[0m mode:
-    nextflow step2_QC_to_counts.nf \033[1;91m--inputTab\033[0m table.csv \\
+    nextflow step2_QC_to_counts.nf \033[1;91m--user\033[0m UserName \\
+                        \033[1;91m--pi\033[0m PiName \\    
+                        \033[1;91m--inputTab\033[0m table.csv \\
                         \033[1;91m--FQdir\033[0m fqDir \\
                         \033[1;91m--genomeDir\033[0m allGenomes \\
                         \033[1;91m--outputDir\033[0m theResult \\
@@ -27,6 +33,8 @@ def helpMessage() {
                         \033[1;91m-N\033[0m your.email@gmail.com
 
     \033[1;91mMandatory\033[0m arguments:
+      \033[1;91m--user\033[0m        User name, should not contain spaces
+      \033[1;91m--pi\033[0m        PI name, should not contain spaces
       \033[1;91m--inputTab\033[0m        Path to the table containing information about input
                         data. The table should have following columns: RunID,
                         (i.e. NXT0540), LibraryID (i.e. nxid12916), SampleID
@@ -82,6 +90,10 @@ if (params.help) {
 /* ----------------------------------------------------------------------------
 * Input handling
 *----------------------------------------------------------------------------*/
+// user and PI
+user = params.user
+pi = params.pi
+
 // path to the input table with samples
 sampleTabPath = file(params.inputTab)
 
@@ -100,9 +112,10 @@ usedBarcodeDir = outputDir + "/barcodeTables"
 
 // technical directory, contains all support files, like scripts, jars, etc
 params.techDir = 'techDir'
-params.pairfq_lite = file(params.techDir + '/pairfq_lite')
 params.brbseqTools = file(params.techDir + '/BRBseqTools.1.5.jar')
 params.barcodefile = file(params.techDir + '/barcodes_v3.txt')
+params.compile_report = file(params.techDir + '/compile_report.R')
+params.markdown = file(params.techDir + '/Generate_UserReport.Rmd')
 
 /* ----------------------------------------------------------------------------
 * LOG: inform user about all the inputs
@@ -474,9 +487,9 @@ process countReads {
           mappedLog from mappedForCounts
 
     output:
-    tuple RunID, LibraryID, SampleID, Genome, 
+    tuple RunID, LibraryID, SampleID, Specie, Genome, 
           path('*.reads.detailed.txt') into readBundle
-    tuple RunID, LibraryID, SampleID, Genome,
+    tuple RunID, LibraryID, SampleID, Specie, Genome,
           path('*.umis.detailed.txt') into umiBundle
 
     shell:
@@ -511,7 +524,8 @@ process mergeReadCounts {
                pattern: '{*readsCombined.csv}', overwrite: true
 
    input: 
-   tuple RunID, LibraryID, SampleID, Genome, Reads from readBundleMerged
+   tuple RunID, LibraryID, SampleID, Specie, Genome, 
+         Reads from readBundleMerged
 
    output:
    file '*readsCombined.csv' into finalReadsTabs
@@ -578,13 +592,16 @@ umiBundle
 
 process mergeUMICounts {
    label 'mid_memory'
+
    publishDir "${outputDir}/countTables",  mode: 'copy',
                pattern: '{*umisCombined.csv}', overwrite: true
 
    input: 
-   tuple RunID, LibraryID, SampleID, Genome, UMIs from umiBundleMerged
+   tuple RunID, LibraryID, SampleID, Specie, Genome, 
+         UMIs from umiBundleMerged
 
    output:
+   tuple RunID, LibraryID, SampleID, Specie, Genome into forUserReport
    file '*umisCombined.csv' into finalUMIsTabs
 
    shell:
@@ -638,6 +655,29 @@ process mergeUMICounts {
       fi
    done
    '''
+}
+
+/* ----------------------------------------------------------------------------
+* Generate Rmarkdown user reports
+*----------------------------------------------------------------------------*/
+process generateUserReport {
+  label 'low_memory'
+
+  publishDir "${outputDir}/user_reports",  mode: 'copy',
+               pattern: '{*.html}', overwrite: true
+
+  input: 
+  tuple RunID, LibraryID, SampleID, Specie, Genome from forUserReport
+
+  output:
+  file '*.html' into userReport
+
+  shell:
+  '''
+  Rscript !{params.compile_report} !{params.markdown} !{user} !{pi} \
+          !{outputDir} !{RunID} !{LibraryID} !{SampleID} \
+          !{Specie} !{Genome}
+  '''
 }
 
 // clean up in case of successful completion
