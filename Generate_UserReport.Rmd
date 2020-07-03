@@ -30,16 +30,19 @@ params:
 
 ```{r markdown_setup, include = FALSE}
 knitr::opts_chunk$set(echo = F)
-#inputArgs <- c('Test User', 'Test PI', 'NXT0540', 'nxid12916', 'BRBseq_v3_plate_1_S25',
-#               'danio_rerio', 'GRCz11.100_GFP', #'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt',
-#               'test_input/fastQC/nxid12916/BRBseq_v3_plate_1_S25/BRBseq_v3_plate_1_S25_R1_001_fastqc/fastqc_data.txt', 
-#               'test_input/cutadapt_trimming_report.txt',
-#               'test_input/BRBseq_v3_plate_1_S25_val_1_fastqc/fastqc_data.txt',
-#               'test_input/stats.txt', 'test_input/mapStatsTab.csv',
-#               'test_input/NXT0570_nxid13444_GRCz11.100_GFP_BRB_AM_50_readsCombined.csv')
 inputArgs <- commandArgs(trailingOnly = T)
+#inputArgs <- c('TestUser', 'TestPI', 'NXT0570', 'nxid13446', 'BRB_AM_10',
+#               'danio_rerio', 'GRCz11.100_GFP', 'test_input/sampleTable.csv',
+#               'test_input/theResult/fastQC/nxid13446/BRB_AM_10/BRB_AM_10_S7_R1_001_fastqc/fastqc_data.txt',
+#               'test_input/theResult/fastQC/nxid13446/BRB_AM_10/BRB_AM_10_S7_R2_001_fastqc/fastqc_data.txt',
+#               'test_input/theResult/trimmed/nxid13446/BRB_AM_10/NXT0570_nxid13446_BRB_AM_10_trimming_report.txt',
+#               'test_input/theResult/trimmed/nxid13446/BRB_AM_10/BRB_AM_10_S7_R2_001_val_2_fastqc/fastqc_data.txt',
+#               'test_input/theResult/demultiplexed/nxid13446/BRB_AM_10/stats.txt',
+#               'test_input/theResult/mapStatsTab.csv',
+#               'test_input/theResult/countTables/NXT0570_nxid13446_GRCz11.100_GFP_BRB_AM_10_readsCombined.csv')
 names(inputArgs) <- c('User', 'PI', 'RunID', 'LibraryID', 'SampleID', 'Specie',
-                      'Genome', 'fastqcR1', 'fastqcR2', 'trimInfoR2', 'fastqcTrimR2',
+                      'Genome', 'submissionTab', 'fastqcR1', 'fastqcR2',
+                      'trimInfoR2', 'fastqcTrimR2',
                       'demultStats', 'mapStats', 'countTab')
 ```
 
@@ -133,9 +136,11 @@ readFastQCsection <- function(filePath, sectionName) {
 #' @param plotTitle title of the plot
 #' @return ggplot
 plotPerBaseQuality_ggplot2 <- function(dtToPlot, plotTitle = '') {
+  # areas to color according to if they pass quality threshold or not
   redArea <- data.frame(x1 = 0, x2 = max(dtToPlot$Base), y1 = 0, y2 = 20)
   yelArea <- data.frame(x1 = 0, x2 = max(dtToPlot$Base), y1 = 20, y2 = 28)
   greenArea <- data.frame(x1 = 0, x2 = max(dtToPlot$Base), y1 = 28, y2 = 40)
+  
   result <- ggplot(dtToPlot, aes(x = Base, y = Median)) + 
     geom_point(shape = 95) + 
     geom_errorbar(aes(ymin = `10th Percentile`, 
@@ -292,8 +297,9 @@ readInTrimmingInfo <- function(filePath) {
 #' readDemultiplexInfo
 #' Reads information from demultiplex statistics info file
 #' @param filePath path to the demultiplex statistics report
+#' @param submissTab sabmission table with iser information
 #' @return list with two elements: Overview and PercPerBarcode
-readDemultiplexInfo <- function(filePath) {
+readDemultiplexInfo <- function(filePath, submissTab) {
   # connection to the file
   connect <- file(filePath, open = "r")
   # read ALL lines of the file, luckily it's not many
@@ -343,10 +349,13 @@ readDemultiplexInfo <- function(filePath) {
     result[[i]][, 3] <- as.double(result[[i]][, 3])
   }
   names(result) <- c('Overview', 'PercPerBarcode')
-  # add row and column position in plate
-  result[[2]]$PlateRow <- gsub('[0-9]+', '', result[[2]]$Barcode)
-  result[[2]]$PlateCol <- gsub('[A-Z]+', '', result[[2]]$Barcode)
+  # change column names
+  colnames(result[[2]])[1] <- 'SampleName'
   colnames(result[[2]])[2] <- 'Reads'
+  # add row and column position in plate
+  setkey(submissTab, 'SampleName')
+  result[[2]]$PlateRow <- submissTab[result[[2]]$SampleName]$plateRow
+  result[[2]]$PlateCol <- submissTab[result[[2]]$SampleName]$plateCol
   
   result
 }
@@ -361,12 +370,12 @@ readDemultiplexInfo <- function(filePath) {
 plotBarChart_plotly <- function(dtToPlot, mode = 'Reads', xAxisTitle, 
                                 plotTitle) {
   # data frame to dysplay ordered values
-  byPerc <- data.frame(x = dtToPlot[, mode], y = dtToPlot$Barcode, 
+  byPerc <- data.frame(x = dtToPlot[, mode], y = dtToPlot$SampleName, 
                        stringsAsFactors = F)
   byPerc <- byPerc[order(byPerc$x), ]
   byPerc$y <- factor(byPerc$y, levels = byPerc$y)
   # data frame to dysplay values ordered by name
-  byName <- data.frame(x = dtToPlot[, mode], y = dtToPlot$Barcode,
+  byName <- data.frame(x = dtToPlot[, mode], y = dtToPlot$SampleName,
                        stringsAsFactors = F)
   byName$y <- factor(byName$y, levels = sort(byName$y, decreasing = T))
   
@@ -410,23 +419,64 @@ plotBarChart_plotly <- function(dtToPlot, mode = 'Reads', xAxisTitle,
 #' @param plotTitle title of the plot
 #' @retun plotly
 plotDemultiplexPlate_plotly <- function(dtToPlot, plotTitle) {
+  # template of the plate
+  emptyPlate <- data.table(PlateRow = rep(LETTERS[1:8], each = 12), 
+                           PlateCol = rep(1:12, 8))
+  setkey(emptyPlate, PlateRow, PlateCol)
+  dtToPlot_datTab <- data.table(dtToPlot)
+  setkey(dtToPlot_datTab, PlateRow, PlateCol)
+  filledPlate <- merge(emptyPlate, dtToPlot_datTab, all = T)
+  
   fig <- plot_ly() %>% 
-    add_trace(data = dtToPlot, x = ~PlateRow, y = ~PlateCol,
+    add_trace(data = filledPlate, x = ~PlateRow, y = ~as.factor(PlateCol),
               type = 'scatter', mode = 'markers', 
-              text = ~paste0(Percent, '%'),
               marker = list(size = ~10 * Percent, color = basicColor,
                             opacity = 1),
-              text = ~ paste0("Sample: ", Barcode, "\nValue: ",
+              text = ~ paste0("Sample: ", SampleName, "\nValue: ",
                               round(Percent, 2)),
               hoverinfo = "text") %>%
     layout(title = plotTitle, showlegend = F,
            font = alitheaPlotlyFont,
            xaxis = append(alitheaPlotlyAxis,
                           list(title = '', 
-                          tick0 = 0, dtick = 1, showgrid = F)),
+                          tick0 = 1, dtick = 1, showgrid = T)),
            yaxis = append(alitheaPlotlyAxis,
-                          list(title = '', tick0 = 0, dtick = 1,
-                          autorange="reversed", showgrid = F)))
+                          list(title = '', tick0 = 1, dtick = 1,
+                          autorange="reversed", showgrid = T)))
+  fig
+}
+
+#' plotConcToReadCorr_plotly
+#' Plots correlation between sample concentarion and number of demultiplexed 
+#' reads
+#' @param demultToPlot, data table to plot, result of 
+#'                      readDemultiplexInfo(x)[[2]]
+#' @param submissTab table with submission information from user
+#' @param plotTitle title of the plot
+#' @retun plotly
+plotConcToReadCorr_plotly <- function(demultToPlot, submissTab, plotTitle) {
+  # convert demultiplex statistics to data table and merge with 
+  # submission table
+  demultStatsDT <- as.data.table(demultToPlot)
+  setkey(demultStatsDT, SampleName)
+  setkey(submissTab, SampleName)
+  dtToplot <- merge(demultStatsDT, submissTab, all = T)
+  
+  # linear regression
+  fit <- lm(Reads ~ concentration, data = dtToplot)
+  
+  fig <- plot_ly(data = dtToplot) %>% 
+  add_trace(x = ~concentration, y = ~Reads, type = "scatter", mode = "markers", 
+            marker = list(color = basicColor),
+            text = ~ paste0("# Reads: ", Reads,
+                            "\n Conc.: ", concentration), 
+            hoverinfo = "text") %>%
+  add_lines(x = ~concentration, y = fitted(fit))  %>%
+  add_text(x = ~concentration, y = ~Reads, text = ~SampleName,
+           textposition = "top right") %>%
+  layout(title = plotTitle, showlegend = F, font = alitheaPlotlyFont,
+         xaxis = append(alitheaPlotlyAxis, list(title = 'Concentration')),
+         yaxis = append(alitheaPlotlyAxis, list(title = 'Number of reads')))
   fig
 }
 
@@ -437,8 +487,8 @@ plotDemultiplexPlate_plotly <- function(dtToPlot, plotTitle) {
 #' @return data table
 readMapStatTab <- function(mappingStatsPath) {
   # Names of the columns
-  idColNames <- c('RunID', 'LibraryID', 'SampleID', 'Specie', 'Genome', 
-                  'SubSample')
+  idColNames <- c('RunID', 'LibraryID', 'SampleID', 'Position', 'SampleName',
+                  'Specie', 'Genome')
   statNames <- c(idColNames, 'total reads', 'uniquely mapped', 
                  'mapped to mult. loci', 'mapped to too many loci',
                  'NOT mapped - mismatches', 'NOT mapped - too short',
@@ -446,10 +496,6 @@ readMapStatTab <- function(mappingStatsPath) {
   # read-in and assign column names
   stats <- fread(mappingStatsPath, header = F, stringsAsFactors = F, fill = T)
   setnames(stats, colnames(stats), statNames)
-  # for the subsample names, remove elements of the path from it, leaving just
-  # samples
-  stats[, SubSample := gsub('.*/', '', SubSample)]
-  stats[, SubSample := gsub('[.].*', '', SubSample)]
   stats
 }
 
@@ -459,12 +505,12 @@ readMapStatTab <- function(mappingStatsPath) {
 #' @return data table
 convertMapStatsToPerc <- function(tabMapStats) {
   # column names used as IDs
-  idCols <- c('RunID', 'LibraryID', 'SampleID', 'Specie', 'Genome', 
-                  'SubSample')
+  idColNames <- c('RunID', 'LibraryID', 'SampleID', 'Position', 'SampleName',
+                  'Specie', 'Genome')
   # select ID columns
-  tabMapStatsPerc <- tabMapStats[, idCols, with = F]
+  tabMapStatsPerc <- tabMapStats[, idColNames, with = F]
   # select columns with raw statistics values (integer)
-  rawStats <- tabMapStats[, !colnames(tabMapStats) %in% idCols, with = F]
+  rawStats <- tabMapStats[, !colnames(tabMapStats) %in% idColNames, with = F]
   # convert to percentages
   percStats <- apply(rawStats, 2, function(x) 100 * x / rawStats$`total reads`)
   percStats <- as.data.table(percStats)
@@ -527,7 +573,7 @@ genVisibilityVectors <- function(numbItems, numbReps) {
 #' @param visibilityList list of visibility for traces
 #' @return list, representing button
 createButtons <- function(dataList, statSortedBy, visibilityList) {
-  changedYaxisTickLabs <- dataList[[statSortedBy]][[statSortedBy]]$SubSample
+  changedYaxisTickLabs <- dataList[[statSortedBy]][[statSortedBy]]$SampleName
   changedYaxisTickLabs <- levels(changedYaxisTickLabs)
   changedYaxis <- list(title = 'Sample', categoryorder = "array",
                        categoryarray = changedYaxisTickLabs, dtick = 1)
@@ -550,11 +596,11 @@ addAllBarChartTraces <- function(figToAdd, dataList, statSortedBy, plotColors,
                                  visibility = F) {
   figToAdd <- figToAdd %>% 
               add_trace(data = dataList[[statSortedBy]][[statSortedBy]],
-                        x = ~Value, y = ~SubSample, 
+                        x = ~Value, y = ~SampleName, 
                         type = 'bar', name = statSortedBy,
                         marker = list(color = plotColors[statSortedBy]),
                         visible = visibility,
-                        text = ~ paste0(statSortedBy, " in ", SubSample,
+                        text = ~ paste0(statSortedBy, " in ", SampleName,
                                         "\n", round(Value, 2)),
                         hoverinfo = "text")
   
@@ -563,11 +609,11 @@ addAllBarChartTraces <- function(figToAdd, dataList, statSortedBy, plotColors,
   for (oneMapStat in otherStats) {
     figToAdd <- figToAdd %>% 
                 add_trace(data = dataList[[statSortedBy]][[oneMapStat]],
-                          x = ~Value, y = ~SubSample, 
+                          x = ~Value, y = ~SampleName, 
                           type = 'bar', name = oneMapStat,
                           marker = list(color = plotColors[oneMapStat]),
                           visible = visibility,
-                          text = ~ paste0(oneMapStat, " in ", SubSample,
+                          text = ~ paste0(oneMapStat, " in ", SampleName,
                                         "\n", round(Value, 2)),
                           hoverinfo = "text")
   }
@@ -594,13 +640,13 @@ plotMappingStats_plotly <- function(dtToPlot, plotTitle) {
   # length(mapChars) so every sub table has just 2 columns
   dtList <- lapply(dtList, 
                   function(x) lapply(mapChars,
-                                      function(y) x[, c('SubSample', y)]))
+                                      function(y) x[, c('SampleName', y)]))
   # give sub tables the same colnames, also give sub lists names by mapping
   # chracteristic which they contain
   for (i in 1:length(dtList)) {
     names(dtList[[i]]) <- mapChars
     for (j in 1:length(dtList[[i]])) {
-      colnames(dtList[[i]][[j]]) <- c('SubSample', 'Value')
+      colnames(dtList[[i]][[j]]) <- c('SampleName', 'Value')
     }
   }
 
@@ -653,11 +699,11 @@ calcPCA <- function(countData, mapStats){
   
   # add info about uniquely mapped reads
   countsPCA <- as.data.frame(countsPCA$x)
-  countsPCA$SubSample <- rownames(countsPCA)
+  countsPCA$SampleName <- rownames(countsPCA)
   countsPCA <- as.data.table(countsPCA)
-  mapStatsReduced <- mapStatTab[, c('SubSample', 'uniquely mapped')]
-  setkey(countsPCA, SubSample)
-  setkey(mapStatsReduced, SubSample)
+  mapStatsReduced <- mapStatTab[, c('SampleName', 'uniquely mapped')]
+  setkey(countsPCA, SampleName)
+  setkey(mapStatsReduced, SampleName)
   countsPCA <- merge(countsPCA, mapStatsReduced, all.x = T)
   
   result <- list(countsPCA, percPCexpl)
@@ -677,7 +723,7 @@ plotPCA_plotly <- function(pcaListToPlot, plotTitle) {
             size = ~`uniquely mapped`, marker = list(color = basicColor),
             text = ~ paste("# uniq. mapped ", `uniquely mapped`), 
             hoverinfo = "text") %>%
-  add_text(x = ~PC1, y = ~PC2, text = ~SubSample,
+  add_text(x = ~PC1, y = ~PC2, text = ~SampleName,
            textposition = "top right") %>%
   layout(title = plotTitle, showlegend = F, font = alitheaPlotlyFont,
          xaxis = append(alitheaPlotlyAxis, 
@@ -693,6 +739,10 @@ plotPCA_plotly <- function(pcaListToPlot, plotTitle) {
 ```
 
 ```{r readInput, include = FALSE}
+# submission table which came from user
+submissionTab <- fread(inputArgs['submissionTab'], header = T)
+submissionTab <- submissionTab[RunID == inputArgs['RunID'] &
+                               LibraryID == inputArgs['LibraryID']]
 # number of raw reads in R1 and R2
 basicStats_R1 <- readFastQCsection(inputArgs['fastqcR1'], '>>Basic Statistics')
 basicStats_R2 <- readFastQCsection(inputArgs['fastqcR2'], '>>Basic Statistics')
@@ -724,7 +774,8 @@ adaptersTrim_R2 <- readFastQCsection(inputArgs['fastqcTrimR2'],
                                      '>>Adapter Content')
 
 # statistics of demultiplexing
-demultiplexStats <- readDemultiplexInfo(inputArgs['demultStats'])
+demultiplexStats <- readDemultiplexInfo(inputArgs['demultStats'], 
+                                        submissionTab)
 
 # mapping statistics
 mapStatTab <- readMapStatTab(inputArgs['mapStats'])
@@ -733,25 +784,24 @@ mapStatTab <- mapStatTab[RunID == inputArgs['RunID'] &
 
 # count table 
 countTab <- fread(inputArgs['countTab'])
-setnames(countTab, 'Unknown_Barcode', 'undetermined')
+# remove quality rows and gene ids/names
+qcNames <- c("__alignment_not_unique", "__ambiguous", "__no_feature",
+             "__not_aligned", "__too_low_aQual")
+countTabNoQCnoGenes <- countTab[!Gene_id %in% qcNames, ]
+countTabNoQCnoGenes <- countTabNoQCnoGenes[, -c('Gene_id', 'Gene_name')] 
 ```
 
 ```{r computeExonicReads, include = FALSE}
 # calculate number of exonic reads
-exonicReads <- colSums(countTab[, -c('Gene_id', 'Gene_name')])
-exonicReads <- data.frame(Barcode = names(exonicReads), Reads = exonicReads)
+exonicReads <- colSums(countTabNoQCnoGenes)
+exonicReads <- data.table(SampleName = names(exonicReads), Reads = exonicReads)
 
 # compute percentage of exonic reads from uniquely mapped reads
-mapStatTabUniqMap <- mapStatTab[, c('SubSample', 'uniquely mapped'), 
-                                with = F]
-colnames(mapStatTabUniqMap)[1] <- 'Sample'
+mapStatTabUniqMap <- mapStatTab[, c('SampleName', 'uniquely mapped'), with = F]
 mapStatTabUniqMap <- as.data.table(mapStatTabUniqMap)
 # merge with exonic reads
-colnames(exonicReads)[1] <- 'Barcode'
-exonicReads <- as.data.table(exonicReads)
-setkey(exonicReads, 'Barcode')
-colnames(mapStatTabUniqMap)[1] <- 'Barcode'
-setkey(mapStatTabUniqMap, 'Barcode')
+setkey(exonicReads, 'SampleName')
+setkey(mapStatTabUniqMap, 'SampleName')
 exonicReads <- merge(exonicReads, mapStatTabUniqMap)
 exonicReads[, Percent := Reads / `uniquely mapped`]
 exonicReads <- as.data.frame(exonicReads)
@@ -759,28 +809,21 @@ exonicReads <- as.data.frame(exonicReads)
 
 ```{r computeNumbExprGenes, include = FALSE}
 # number of genes with > 1 count
-numbExprGenes1 <- apply(countTab[, -c('Gene_id', 'Gene_name')], 2, 
-                         function(x) sum(x > 1))
-numbExprGenes1 <- data.frame(Barcode = names(numbExprGenes1), 
+numbExprGenes1 <- apply(countTabNoQCnoGenes, 2, function(x) sum(x > 1))
+numbExprGenes1 <- data.frame(SampleName = names(numbExprGenes1), 
                              NumbGenes = numbExprGenes1)
 # number of genes with > 10 counts
-numbExprGenes10 <- apply(countTab[, -c('Gene_id', 'Gene_name')], 2, 
-                         function(x) sum(x > 10))
-numbExprGenes10 <- data.frame(Barcode = names(numbExprGenes10), 
+numbExprGenes10 <- apply(countTabNoQCnoGenes, 2, function(x) sum(x > 10))
+numbExprGenes10 <- data.frame(SampleName = names(numbExprGenes10), 
                               NumbGenes = numbExprGenes10)
 ```
 
 ```{r normCounts, include = FALSE}
-# names of the QC rows in the count table
-qcNames <- c("__alignment_not_unique", "__ambiguous", "__no_feature",
-             "__not_aligned", "__too_low_aQual")
 countTabMatr <- as.matrix(countTab[, -2:-1])
 rownames(countTabMatr) <- countTab$Gene_id
 # normalize with voom
 countsNormVoom <- voom(counts = countTabMatr, normalize.method = "quantile")
 countsNormVoom <- countsNormVoom$E
-# now we can also remove QC rows from the table
-countsNormVoom <- countsNormVoom[!rownames(countsNormVoom) %in% qcNames, ]
 ```
 
 ```{r calcPCA, include = FALSE}
@@ -789,7 +832,7 @@ countsNormPCA <- calcPCA(countsNormVoom[, -2:-1])
 ```
 
 ```{r calcPlotHeigth, include = FALSE}
-sampleNumb <- length(unique(demultiplexStats[[2]]$Barcode))
+sampleNumb <- length(unique(demultiplexStats[[2]]$SampleName))
 mapStatsHeigth <- max(4.5, 0.116 * sampleNumb + 0.75)
 mapPlotHeigth <- max(1, 0.113 * sampleNumb + 1)
 ```
@@ -904,7 +947,7 @@ because trimming on it was not performed.
 
 ### Read 2
 ```{r adapterTrimQC_R2, fig.height = 6, fig.width = 8.5, fig.align = "left"}
-plotAdapterContent_plotly(adaptersTrim_R2, 'Adapter contamination in R1')
+plotAdapterContent_plotly(adaptersTrim_R2, 'Adapter contamination in R2')
 ```
 
 # Demultiplexing {.tabset}
@@ -916,7 +959,16 @@ reasons such as poor barcode base quality.
 kable(demultiplexStats[[1]], caption = 'Overview of demultiplexing')
 ```
 
-## Bar plot
+## Bar plot - values
+The chart below depicts a distribution of demultiplexed reads per sample. A two
+fold variation is expected and normal.
+
+```{r demultiplexStatsValuesPlot, fig.height = mapPlotHeigth, fig.width = 8.5, fig.align = "left"}
+plotBarChart_plotly(demultiplexStats[[2]], 'Reads', '# of reads per sample',
+                    'Demultiplexing results')
+```
+
+## Bar plot - percentage
 
 The chart below depicts a distribution of the percentage of total reads 
 allocated per sample. A two fold variation is expected and normal.
@@ -935,6 +987,25 @@ sequencing bias can be explained based on plate position.
 ```{r demultiplexPlatePlot, fig.height = 6, fig.width = 8.5, fig.align = "left"}
 plotDemultiplexPlate_plotly(demultiplexStats[[2]], 
                             '% of reads per sample, plate view')
+```
+
+## Table
+```{r demultiplexTab, results = 'asis'}
+tabToShow <- demultiplexStats[[2]]
+colnames(tabToShow) <- c('Sample name', '# of reads', "Percent", "Plate row",
+                         'Plate column')
+kable(tabToShow, caption = 'Demultiplexing statistics') %>%
+      kable_styling(bootstrap_options = c("striped", "hover", "condensed",
+                                          "responsive")) %>%
+  scroll_box(width = "100%", height = "500px")
+```
+
+#
+
+## Correlation with sample concentration
+```{r corrConcReads, fig.height = 6, fig.width = 8.5, fig.align = "left", warning = F}
+plotConcToReadCorr_plotly(demultiplexStats[[2]], submissionTab, 
+                          'Correlation between sample concentation and number of reads') 
 ```
 
 # Mapping {.tabset}
@@ -1052,12 +1123,12 @@ expained by a principle component.
 
 ## raw counts 
 PCA based on raw (integer) counts
-```{r pcaRaw, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+```{r pcaRaw, fig.height = 6, fig.width = 8.5, fig.align = "left", warning = F, message = F}
 plotPCA_plotly(countsRawPCA, 'PCA based on raw counts')
 ```
 
 ## normalized data
 PCA based on normalized for sequencing depth data
-```{r PcaNorm, fig.height = 6, fig.width = 8.5, fig.align = "left"}
+```{r PcaNorm, fig.height = 6, fig.width = 8.5, fig.align = "left", warning = F}
 plotPCA_plotly(countsNormPCA, 'PCA based on normalized counts')
 ```
