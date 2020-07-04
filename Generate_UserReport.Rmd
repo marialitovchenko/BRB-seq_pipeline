@@ -1,32 +1,56 @@
 ---
 title: "`r paste0('Data analysis report of run ', commandArgs(trailingOnly=T)[3], ', library ', commandArgs(trailingOnly=T)[4])`"
-author: "`r paste0('by Alithea Genomics for ', commandArgs(trailingOnly=T)[1], ' (PI: ', commandArgs(trailingOnly=T)[2])`"
+author: "`r paste0('by Alithea Genomics for ', commandArgs(trailingOnly=T)[1], ' (PI: ', commandArgs(trailingOnly=T)[2], ')' )`"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 fontsize: 20pt 
 output:
-  rmdformats::readthedown:
-    self_contained: true
-    thumbnails: true
-    lightbox: false
-    gallery: false
-    highlight: tango
+  html_document:
+    template: UserReport_template.html
+    toc: true
     css: Generate_UserReport.css
 params:
   args: inputArgs
 ---
 
-<style>
-.column-left{
-  float: left;
-  width: 50%;
-  text-align: left;
-}
-.column-right{
-  float: right;
-  width: 50%;
-  text-align: left;
-}
-</style>
+```{js, echo=FALSE}
+$( document ).ready(function() {
+
+    // Fix for dots in level 1 and level 2 titles
+    $('body .section.level1').each(function () {
+      $(this).attr("id", $(this).attr("id").replace(/\./g, "-"));
+    });
+    $('body .section.level2').each(function () {
+      $(this).attr("id", $(this).attr("id").replace(/\./g, "-"));
+    });
+    $('#table-of-contents ul li a').each(function () {
+      $(this).attr("href", $(this).attr("href").replace(/\./g, "-"));
+    });
+
+    // Shift nav in mobile when clicking the menu.
+    $(document).on('click', "[data-toggle='wy-nav-top']", function() {
+      $("[data-toggle='wy-nav-shift']").toggleClass("shift");
+    });
+    // Close menu when you click a link.
+    $(document).on('click', "#table-of-contents ul li a", function() {
+      $("[data-toggle='wy-nav-shift']").removeClass("shift");
+    });
+    // Close menu when you click on main content
+    $(document).on('click', "#main, #header", function() {
+      $("[data-toggle='wy-nav-shift']").removeClass("shift");
+    });
+
+    // Make tables responsive
+    $("#main table").wrap("<div class='table-wrapper'></div>");
+
+    // ScrollSpy also requires that we use a Bootstrap nav component.
+    $('#table-of-contents ul').first().addClass('nav');
+    $('body').scrollspy({target: '#table-of-contents'});
+
+    // add sticky table headers
+    //$('table').stickyTableHeaders();
+
+});
+```
 
 ```{r markdown_setup, include = FALSE}
 knitr::opts_chunk$set(echo = F)
@@ -958,6 +982,8 @@ reasons such as poor barcode base quality.
 ```{r demultiplexStats, results = "asis"}
 kable(demultiplexStats[[1]], caption = 'Overview of demultiplexing')
 ```
+
+
 
 ## Bar plot - values
 The chart below depicts a distribution of demultiplexed reads per sample. A two

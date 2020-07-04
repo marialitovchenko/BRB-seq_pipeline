@@ -515,7 +515,7 @@ process countReads {
 * Merge count tables per sample into 1 count table: reads
 *----------------------------------------------------------------------------*/
 readBundle
-     .groupTuple(by: [0, 1, 2, 3])
+     .groupTuple(by: [0, 1, 2, 3, 4])
      .set{readBundleMerged}
 
 process mergeReadCounts {
@@ -587,7 +587,7 @@ process mergeReadCounts {
 * Merge count tables per sample into 1 count table: UMIs
 *----------------------------------------------------------------------------*/
 umiBundle
-     .groupTuple(by: [0, 1, 2, 3])
+     .groupTuple(by: [0, 1, 2, 3, 4])
      .set{umiBundleMerged}
 
 process mergeUMICounts {
