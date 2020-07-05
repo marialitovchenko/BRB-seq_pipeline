@@ -107,8 +107,6 @@ genomePath = file(params.genomeDir)
 params.outputDir = file('.')
 outputDir = file(params.outputDir) 
 mapStatsTab = outputDir + "/mapStatsTab.csv"
-// subfolder for files with used selected barcodes
-usedBarcodeDir = outputDir + "/barcodeTables"
 
 // technical directory, contains all support files, like scripts, jars, etc
 params.techDir = 'techDir'
@@ -116,6 +114,7 @@ params.brbseqTools = file(params.techDir + '/BRBseqTools.1.5.jar')
 params.barcodefile = file(params.techDir + '/barcodes_v3.txt')
 params.compile_report = file(params.techDir + '/compile_report.R')
 params.markdown = file(params.techDir + '/Generate_UserReport.Rmd')
+params.barcodesPerLibrary = file(params.techDir + '/barcodesPerLibrary.R')
 
 /* ----------------------------------------------------------------------------
 * LOG: inform user about all the inputs
@@ -178,13 +177,12 @@ sampleTabCh
     .map{ row -> tuple(row.RunID, row.LibraryID, row.SampleID, row.R1len, 
                        row.BU_ptrn, row.SampleName, row.pos, row.Specie,
                        row.Genome) }
-    .into{ sampleTab; fqForQCtrim; barcodesPerRun}
+    .into{ sampleTab; fqForQCtrim}
 
 // sampleTab will have the full information about submitted samples, and 
 // fqForQCtrim will only have info determining unique fastq files. This is done
 // in order to restrict number of QC and trimming processes only to the 
-// nessecary ones, without repetition. barcodesPerRun will be further used to 
-// only select barcodes which were used for sample multiplexing.
+// nessecary ones, without repetition.
 
 // groupTuple assures that there is no occasional slipage between the different
 // lines coming from the table, nextflow has it time to time.
@@ -201,32 +199,24 @@ fqForQCtrim.flatMap { item ->
     .unique()
     .set{ uniq_fqForQCtrim }
 
-// read in avaible barcodes
-barcodeTabCh = Channel.fromPath( params.barcodefile  )
-barcodeTabCh
-    .splitCsv(header: true, sep:'\t')
-    .map{ row -> tuple(row.Name, row.B1) }
-    .set{ barcodeTab}
-// create a map telling which barcodes were used per sample and output it to a
-// file. But header is missing! groupTuple assures that there is no occasional 
-// slipage between the different lines coming from the table, nextflow has it 
-// time to time.
-barcodesPerRun
-  .flatMap { item ->
-        RunID = item[0];
-        LibraryID = item[1];
-        SampleID = item[2];
-        Name = item[6];
-        SampleName = item[5];
-        collect { onefile -> return [ Name, RunID, LibraryID, SampleID, 
-                                      SampleName ] }
-    }
-    .groupTuple(by : [0, 1, 2, 3, 4])
-    .combine(barcodeTab, by : 0)
-    .collectFile(storeDir: usedBarcodeDir) { item ->
-      [ "${item[1]}_${item[2]}_${item[3]}.txt", 
-      item[4] + '\t' + item[5] +  '\n']
-    }
+/* ----------------------------------------------------------------------------
+* Create custom barcode tables for each RunID - LibraryID - SampleID 
+* combination
+*----------------------------------------------------------------------------*/
+process createCustomBarcodeTabs {
+  label 'low_memory'
+
+  publishDir "${outputDir}/barcodeTables/", mode: 'copy', pattern: '*.txt', 
+             overwrite: true
+
+  output:
+  file "*.txt" into barcodesPerLibrary
+  
+  shell:
+  '''
+  Rscript !{params.barcodesPerLibrary} !{sampleTabPath} !{barcodeTabPath}
+  '''
+}
 
 /* ----------------------------------------------------------------------------
 * Perform QC check
@@ -664,13 +654,15 @@ process generateUserReport {
   label 'low_memory'
 
   publishDir "${outputDir}/user_reports",  mode: 'copy',
-               pattern: '{*.html}', overwrite: true
+               pattern: '*.{html,txt}', overwrite: true
 
   input: 
   tuple RunID, LibraryID, SampleID, Specie, Genome from forUserReport
 
   output:
   file '*.html' into userReport
+  file '*_SeqStats.txt' into seqStatsBundle
+  file '*_MapStats.txt' into mapStatsBundle
 
   shell:
   '''
@@ -679,6 +671,10 @@ process generateUserReport {
           !{Specie} !{Genome} !{sampleTabPath}
   '''
 }
+
+seqStatsBundle.println()
+mapStatsBundle.println()
+
 
 // clean up in case of successful completion
 workflow.onComplete {
