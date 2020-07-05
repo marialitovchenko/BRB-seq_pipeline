@@ -14,8 +14,8 @@
 # REQUIREMENTS:  ggplot2, data.table, rmarkdown
 # BUGS: --
 # NOTES: --
-# AUTHOR:  Maria Litovchenko, maria.litovchenko@epfl.ch
-# COMPANY:  EPFL, Lausanne, Switzerland
+# AUTHOR:  Maria Litovchenko, maria.litovchenko@gmail.com
+# COMPANY:  Alithea Genomics, Lausanne, Switzerland
 # VERSION:  1
 # CREATED:  03.07.2020
 # REVISION: 03.07.2020
@@ -26,49 +26,52 @@ cmdArgs <- commandArgs(trailingOnly = T)
 markdownScript <- cmdArgs[1]
 cmdArgs <- cmdArgs[-1]
 
-names(cmdArgs) <- c('User', 'PI', 'ResultFolder', 'RunID', 'LibraryID',
+names(cmdArgs) <- c('User', 'PI', 'ResultFolder', 'RunID', 'LibraryID', 
                     'SampleID', 'Specie', 'Genome', 'submissionTab')
 
-subFolders <- paste(cmdArgs['RunID'], cmdArgs['LibraryID'],
-                    cmdArgs['SampleID'], sep = '/')
+subFolders <- paste(cmdArgs['RunID'], cmdArgs['LibraryID'], 
+                    cmdArgs['SampleID'], sep = '/') 
 
 # get fastqc text report for R1 and R2: we need to unzip them first
 fastqcDir <- paste(cmdArgs['ResultFolder'], 'fastQC', subFolders, sep = '/')
-fastqcR1zip <- list.files(fastqcDir, pattern = '_R2_.*zip$', full.names = T)
-fastqcR2zip <- list.files(fastqcDir, pattern = '_R2_.*zip$', full.names = T)
+fastqcR1zip <- list.files(fastqcDir, pattern = '_R2_.*zip$', full.names = T) 
+fastqcR2zip <- list.files(fastqcDir, pattern = '_R2_.*zip$', full.names = T) 
 system(paste('unzip -d', fastqcDir, '-u', fastqcR1zip))
 system(paste('unzip -d', fastqcDir, '-u', fastqcR2zip))
-fastqcR1file <- list.files(gsub('.zip', '/', fastqcR1zip),
+fastqcR1file <- list.files(gsub('.zip', '/', fastqcR1zip), 
                            pattern = 'fastqc_data.txt', full.names = T)
-fastqcR2file <- list.files(gsub('.zip', '/', fastqcR2zip),
+fastqcR2file <- list.files(gsub('.zip', '/', fastqcR2zip), 
                            pattern = 'fastqc_data.txt', full.names = T)
 
 # get trimming report from trim_galore and fastqc for trimmed R2
 trimDir <-  paste(cmdArgs['ResultFolder'], 'trimmed', subFolders, sep = '/')
-trimRepR2 <- list.files(trimDir, pattern = '_trimming_report.txt$',
+trimRepR2 <- list.files(trimDir, pattern = '_trimming_report.txt$', 
                         full.names = T)
-trimFastqcR2 <- list.files(trimDir, pattern = 'val_2_fastqc.zip$',
+trimFastqcR2 <- list.files(trimDir, pattern = 'val_2_fastqc.zip$', 
                            full.names = T)
 system(paste('unzip -d', trimDir, '-u', trimFastqcR2))
-trimFastqcR2 <- list.files(gsub('.zip', '/', trimFastqcR2),
-                           pattern = 'fastqc_data.txt', full.names = T)
+trimFastqcR2 <- list.files(gsub('.zip', '/', trimFastqcR2), 
+                           pattern = 'fastqc_data.txt', full.names = T)  
 
 # demultiplexing statistics
-demultiplStatsFile <-  paste(cmdArgs['ResultFolder'], 'demultiplexed',
+demultiplStatsFile <-  paste(cmdArgs['ResultFolder'], 'demultiplexed', 
                              subFolders, 'stats.txt', sep = '/')
 # mapping statistics
 mapStatsFile <- paste(cmdArgs['ResultFolder'], 'mapStatsTab.csv', sep = '/')
 # count table
 countTabFile <- paste0(cmdArgs['ResultFolder'], '/countTables/',
                        cmdArgs['RunID'], '_', cmdArgs['LibraryID'], '_',
-                       cmdArgs['Genome'], '_', cmdArgs['SampleID'],
+                       cmdArgs['Genome'], '_', cmdArgs['SampleID'], 
                        '_readsCombined.csv')
 
 # Run Rmarkdown script to generate user report --------------------------------
-inputArgs <- c(cmdArgs[-3], fastqcR1file, fastqcR2file, trimRepR2, trimFastqcR2,
+inputArgs <- c(cmdArgs[-3], fastqcR1file, fastqcR2file, trimRepR2, trimFastqcR2, 
                demultiplStatsFile, mapStatsFile, countTabFile)
-names(inputArgs) <- c(names(cmdArgs)[-3], 'fastqcR1', 'fastqcR2',
+names(inputArgs) <- c(names(cmdArgs)[-3], 'fastqcR1', 'fastqcR2', 
                       'trimInfoR2', 'fastqcTrimR2', 'demultStats', 'mapStats',
                       'countTab')
+resultHTML <- paste0(cmdArgs['RunID'], '_', cmdArgs['LibraryID'], '_',
+                    cmdArgs['SampleID'], '_', cmdArgs['Genome'], '.html')
 system(paste0("R -e \"rmarkdown::render(\'", markdownScript,
-             "\', output_file=\'output.html\')\" --args ", paste(inputArgs, collapse = ' ')))
+              "\', output_file=\'",resultHTML, "\')\" --args ", 
+              paste(inputArgs, collapse = ' ')))

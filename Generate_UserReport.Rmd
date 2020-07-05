@@ -53,6 +53,7 @@ $( document ).ready(function() {
 ```
 
 ```{r markdown_setup, include = FALSE}
+# Sets up R markdown environment, reads input vector, names it
 knitr::opts_chunk$set(echo = F)
 inputArgs <- commandArgs(trailingOnly = T)
 #inputArgs <- c('TestUser', 'TestPI', 'NXT0570', 'nxid13446', 'BRB_AM_10',
@@ -71,6 +72,8 @@ names(inputArgs) <- c('User', 'PI', 'RunID', 'LibraryID', 'SampleID', 'Specie',
 ```
 
 ```{r setup_and_functions, include = FALSE}
+# Loads all the R libraies and functions needed
+
 library(data.table)
 library(DT)
 library(ggrepel)
@@ -763,6 +766,8 @@ plotPCA_plotly <- function(pcaListToPlot, plotTitle) {
 ```
 
 ```{r readInput, include = FALSE}
+# Reads all input files
+
 # submission table which came from user
 submissionTab <- fread(inputArgs['submissionTab'], header = T)
 submissionTab <- submissionTab[RunID == inputArgs['RunID'] &
@@ -840,6 +845,73 @@ numbExprGenes1 <- data.frame(SampleName = names(numbExprGenes1),
 numbExprGenes10 <- apply(countTabNoQCnoGenes, 2, function(x) sum(x > 10))
 numbExprGenes10 <- data.frame(SampleName = names(numbExprGenes10), 
                               NumbGenes = numbExprGenes10)
+```
+
+```{r integratedTable_1, include = F}
+# Compile integrated table with sequencing statistics
+
+integratedTable_1 <- submissionTab[,.N, by = .(RunID, LibraryID, SampleID)]
+integratedTable_1 <- cbind(integratedTable_1, t(basicStats[, 1]), 
+                           t(basicStats[, 2]))
+colnames(integratedTable_1) <- c("RunID", "LibraryID", "SampleID", 
+                                 "Number of samples", "R1: number of reads",
+                                 "R1: length", "R1: GC%", 
+                                 "R2: number of reads",
+                                 "R2: length", "R2: GC%")
+integratedTable_1_fileName <- paste(integratedTable_1$RunID, 
+                                    integratedTable_1$LibraryID,
+                                    integratedTable_1$SampleID, sep = '_')
+write.table(integratedTable_1, 
+            paste0(integratedTable_1_fileName, '_SeqStats.txt'),
+            col.names = T, row.names = F, quote = F, sep = '\t', append = F)
+```
+
+```{r integratedTable_2, include = F}
+# Compile integrated table with demultiplexing and mapping statistics
+
+# first, merge demultiplexed stats and mapping stats
+demultiplexStatsDT <- as.data.table(demultiplexStats[[2]])
+setkey(demultiplexStatsDT, SampleName)
+setkey(mapStatTab, SampleName)
+integratedTable_2 <- merge(demultiplexStatsDT, mapStatTab, all = T)
+setnames(integratedTable_2, 'Reads', 'Demultiplexed reads')
+setnames(integratedTable_2, 'Percent', '% of library total reads')
+integratedTable_2[, PlateRow := NULL]
+integratedTable_2[, PlateCol := NULL]
+integratedTable_2[, `total reads` := NULL]
+
+# add number of exonic reads
+exonicReadsDT <- as.data.table(exonicReads)
+exonicReadsDT[, `uniquely mapped` := NULL]
+colnames(exonicReadsDT) <- c('SampleName', 'Number of exonic reads', 
+                             '% of exonic reads')
+setkey(integratedTable_2, SampleName)
+setkey(exonicReadsDT, SampleName)
+integratedTable_2 <- merge(integratedTable_2, exonicReadsDT, all = T)
+
+# add number of expressed genes, >1 reads
+numbExprGenes1DT <- as.data.table(numbExprGenes1)
+colnames(numbExprGenes1DT) <- c('SampleName', 'Number of genes with > 1 count')
+setkey(integratedTable_2, 'SampleName')
+setkey(numbExprGenes1DT, 'SampleName')
+integratedTable_2 <- merge(integratedTable_2, numbExprGenes1DT, all = T)
+
+# add number of expressed genes, >10 reads
+numbExprGenes10DT <- as.data.table(numbExprGenes10)
+colnames(numbExprGenes10DT) <- c('SampleName', 
+                                 'Number of genes with > 10 count')
+setkey(integratedTable_2, 'SampleName')
+setkey(numbExprGenes10DT, 'SampleName')
+integratedTable_2 <- merge(integratedTable_2, numbExprGenes10DT, all = T)
+
+# write into table
+integratedTable_2_fileName <- paste(unique(integratedTable_2$RunID),
+                                    unique(integratedTable_2$LibraryID),
+                                    unique(integratedTable_2$SampleID),
+                                    sep = '_')
+write.table(integratedTable_2, 
+            paste0(integratedTable_2_fileName, '_MapStats.txt'),
+            col.names = T, row.names = F, quote = F, sep = '\t', append = F)
 ```
 
 ```{r normCounts, include = FALSE}
@@ -982,7 +1054,6 @@ reasons such as poor barcode base quality.
 ```{r demultiplexStats, results = "asis"}
 kable(demultiplexStats[[1]], caption = 'Overview of demultiplexing')
 ```
-
 
 
 ## Bar plot - values
