@@ -107,6 +107,7 @@ genomePath = file(params.genomeDir)
 params.outputDir = file('.')
 outputDir = file(params.outputDir) 
 mapStatsTab = outputDir + "/mapStatsTab.csv"
+usedBarcodeDir = outputDir + '/barcodeTables'
 
 // technical directory, contains all support files, like scripts, jars, etc
 params.techDir = 'techDir'
@@ -206,7 +207,7 @@ fqForQCtrim.flatMap { item ->
 process createCustomBarcodeTabs {
   label 'low_memory'
 
-  publishDir "${outputDir}/barcodeTables/", mode: 'copy', pattern: '*.txt', 
+  publishDir "${usedBarcodeDir}", mode: 'copy', pattern: '*.txt', 
              overwrite: true
 
   output:
@@ -214,7 +215,7 @@ process createCustomBarcodeTabs {
   
   shell:
   '''
-  Rscript !{params.barcodesPerLibrary} !{sampleTabPath} !{barcodeTabPath}
+  Rscript !{params.barcodesPerLibrary} !{sampleTabPath} !{params.barcodefile}
   '''
 }
 
@@ -338,7 +339,6 @@ process demultiplex {
     umiLen=$((!{R1len} - 10)) 
     # get run - specific barcode file (created above) and add header to it
     barcodeFile=!{usedBarcodeDir}/!{RunID}_!{LibraryID}_!{SampleID}.txt
-    echo 'Name\tB1' | cat - $barcodeFile > temp && mv temp $barcodeFile
 
     java -jar !{params.brbseqTools} Demultiplex -r1 !{trimmedR1} \
               -r2 !{trimmedR2} -c $barcodeFile -o "." \
@@ -653,22 +653,14 @@ process mergeUMICounts {
 process generateUserReport {
   label 'low_memory'
 
-  publishDir "${outputDir}/user_reports",  mode: 'copy',
-               pattern: '*.{html,txt}', overwrite: true
-
   input: 
   tuple RunID, LibraryID, SampleID, Specie, Genome from forUserReport
-
-  output:
-  file '*.html' into userReport
-  file '*_SeqStats.txt' into seqStatsBundle
-  file '*_MapStats.txt' into mapStatsBundle
-
+  
   shell:
   '''
   Rscript !{params.compile_report} !{params.markdown} !{user} !{pi} \
           !{outputDir} !{RunID} !{LibraryID} !{SampleID} \
-          !{Specie} !{Genome} !{sampleTabPath}
+          !{Specie} !{Genome} !{sampleTabPath} !{outputDir}"/user_report/"
   '''
 }
 

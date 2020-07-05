@@ -862,7 +862,7 @@ integratedTable_1_fileName <- paste(integratedTable_1$RunID,
                                     integratedTable_1$LibraryID,
                                     integratedTable_1$SampleID, sep = '_')
 write.table(integratedTable_1, 
-            paste0(integratedTable_1_fileName, '_SeqStats.txt'),
+            paste0(integratedTable_1_fileName, '_SeqStats.csv'),
             col.names = T, row.names = F, quote = F, sep = '\t', append = F)
 ```
 
@@ -908,9 +908,10 @@ integratedTable_2 <- merge(integratedTable_2, numbExprGenes10DT, all = T)
 integratedTable_2_fileName <- paste(unique(integratedTable_2$RunID),
                                     unique(integratedTable_2$LibraryID),
                                     unique(integratedTable_2$SampleID),
+                                    unique(integratedTable_2$Genome),
                                     sep = '_')
 write.table(integratedTable_2, 
-            paste0(integratedTable_2_fileName, '_MapStats.txt'),
+            paste0(integratedTable_2_fileName, '_MapStats.csv'),
             col.names = T, row.names = F, quote = F, sep = '\t', append = F)
 ```
 
@@ -1100,6 +1101,8 @@ kable(tabToShow, caption = 'Demultiplexing statistics') %>%
 #
 
 ## Correlation with sample concentration
+This plot allows you to assess if any sample was undersequenced dut to the low
+concentration
 ```{r corrConcReads, fig.height = 6, fig.width = 8.5, fig.align = "left", warning = F}
 plotConcToReadCorr_plotly(demultiplexStats[[2]], submissionTab, 
                           'Correlation between sample concentation and number of reads') 
