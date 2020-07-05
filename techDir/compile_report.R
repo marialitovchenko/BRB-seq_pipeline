@@ -27,7 +27,8 @@ markdownScript <- cmdArgs[1]
 cmdArgs <- cmdArgs[-1]
 
 names(cmdArgs) <- c('User', 'PI', 'ResultFolder', 'RunID', 'LibraryID', 
-                    'SampleID', 'Specie', 'Genome', 'submissionTab')
+                    'SampleID', 'Specie', 'Genome', 'submissionTab', 
+                    'outputDirPath')
 
 subFolders <- paste(cmdArgs['RunID'], cmdArgs['LibraryID'], 
                     cmdArgs['SampleID'], sep = '/') 
@@ -65,13 +66,25 @@ countTabFile <- paste0(cmdArgs['ResultFolder'], '/countTables/',
                        '_readsCombined.csv')
 
 # Run Rmarkdown script to generate user report --------------------------------
-inputArgs <- c(cmdArgs[-3], fastqcR1file, fastqcR2file, trimRepR2, trimFastqcR2, 
-               demultiplStatsFile, mapStatsFile, countTabFile)
-names(inputArgs) <- c(names(cmdArgs)[-3], 'fastqcR1', 'fastqcR2', 
+inputArgs <- c(cmdArgs[c(-10, -3)], fastqcR1file, fastqcR2file, trimRepR2, 
+               trimFastqcR2, demultiplStatsFile, mapStatsFile, countTabFile)
+names(inputArgs) <- c(names(cmdArgs)[c(-10, -3)], 'fastqcR1', 'fastqcR2', 
                       'trimInfoR2', 'fastqcTrimR2', 'demultStats', 'mapStats',
                       'countTab')
 resultHTML <- paste0(cmdArgs['RunID'], '_', cmdArgs['LibraryID'], '_',
                     cmdArgs['SampleID'], '_', cmdArgs['Genome'], '.html')
+resultHTML <- paste0(cmdArgs['outputDirPath'], '/', resultHTML)
+
+# recursively create directories
+system(paste('mkdir -p', cmdArgs['outputDirPath']))
+
 system(paste0("R -e \"rmarkdown::render(\'", markdownScript,
               "\', output_file=\'",resultHTML, "\')\" --args ", 
               paste(inputArgs, collapse = ' ')))
+
+# Move the tables to the output folder ----------------------------------------
+currScriptDir <- dirname(markdownScript)
+tabsToMove <- paste0(cmdArgs['RunID'], '_', cmdArgs['LibraryID'], '_',
+                    cmdArgs['SampleID'], '*.csv')
+tabsToMove <- paste0(currScriptDir, '/', tabsToMove)
+system(paste('mv', tabsToMove, cmdArgs['outputDirPath']))
