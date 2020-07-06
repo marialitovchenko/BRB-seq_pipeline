@@ -809,7 +809,9 @@ demultiplexStats <- readDemultiplexInfo(inputArgs['demultStats'],
 # mapping statistics
 mapStatTab <- readMapStatTab(inputArgs['mapStats'])
 mapStatTab <- mapStatTab[RunID == inputArgs['RunID'] &
-                         LibraryID == inputArgs['LibraryID']]
+                         LibraryID == inputArgs['LibraryID'] &
+                         SampleID == inputArgs['SampleID'] &
+                         Genome == inputArgs['Genome']]
 
 # count table 
 countTab <- fread(inputArgs['countTab'])

@@ -62,7 +62,7 @@ mapStatsFile <- paste(cmdArgs['ResultFolder'], 'mapStatsTab.csv', sep = '/')
 # count table
 countTabFile <- paste0(cmdArgs['ResultFolder'], '/countTables/',
                        cmdArgs['RunID'], '_', cmdArgs['LibraryID'], '_',
-                       cmdArgs['Genome'], '_', cmdArgs['SampleID'], 
+                       cmdArgs['SampleID'], '_', cmdArgs['Genome'],
                        '_readsCombined.csv')
 
 # Run Rmarkdown script to generate user report --------------------------------

@@ -406,7 +406,7 @@ process mapWithStar {
     shell:
     '''
     mapPrefName=`basename !{demultiplexfq} | sed 's/[.].*//g'`
-    mapPrefName=$mapPrefName"_"!{Genome}"_"
+    mapPrefName=$mapPrefName"_"
     STAR --runMode alignReads --readFilesIn !{demultiplexfq} \
          --genomeDir !{genomePath}'/'!{Specie}'/'!{Genome}'/STAR_Index' \
          --runThreadN !{task.cpus} \
@@ -550,7 +550,7 @@ process mergeReadCounts {
    }
    
    # output file
-   outputCombinedTable=`echo !{RunID} "_" !{LibraryID} "_" !{Genome} "_" !{SampleID} "_readsCombined.csv"`
+   outputCombinedTable=`echo !{RunID} "_" !{LibraryID} "_" !{SampleID} "_" !{Genome} "_readsCombined.csv"`
    outputCombinedTable=`echo $outputCombinedTable | sed 's@ @@g'`
 
    # loop over all individual count files, extract column corresponding to 
@@ -624,7 +624,7 @@ process mergeUMICounts {
    }
    
    # output file
-   outputCombinedTable=`echo !{RunID} "_" !{LibraryID} "_" !{Genome} "_" !{SampleID} "_umisCombined.csv"`
+   outputCombinedTable=`echo !{RunID} "_" !{LibraryID} "_" !{SampleID} "_" !{Genome} "_umisCombined.csv"`
    outputCombinedTable=`echo $outputCombinedTable | sed 's@ @@g'`
 
    # loop over all individual count files, extract column corresponding to 
