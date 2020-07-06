@@ -157,7 +157,7 @@ log.info """\
          ${outputDir}/counts	:	folder containing counts for individual samples
          \033[1;93m${outputDir}/countTables\033[0m	:	folder containing \033[1;93mfinal count tables\033[0m
          \033[1;93m${mapStatsTab}\033[0m  : a \033[1;93mfile with mapping statistics\033[0m and further visualized with \033[1;93mplotMapStats.R\033[0m
-         \033[1;93m${user_report}\033[0m  : a \033[1;93mfolder with report to give back to user\033[0m 
+         \033[1;93m${outputDir}/user_report\033[0m  : a \033[1;93mfolder with report to give back to user\033[0m 
 
 
          \033[1;91mImportant note:\033[0m: you may not see some of the samples in the final
