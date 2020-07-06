@@ -385,10 +385,10 @@ demultiplexBundle
 process mapWithStar {
     label 'high_memory'
 
-    publishDir "${outputDir}/mapped/${RunID}/${LibraryID}/${SampleID}", 
+    publishDir "${outputDir}/mapped/${RunID}/${LibraryID}/${SampleID}/${Genome}", 
                mode: 'copy', pattern: '*.sortedByCoord.out.bam',
                overwrite: true
-    publishDir "${outputDir}/mapStats/${RunID}/${LibraryID}/${SampleID}", 
+    publishDir "${outputDir}/mapStats/${RunID}/${LibraryID}/${SampleID}/${Genome}", 
                 mode: 'copy', pattern: '*_Log.final.out',
                 overwrite: true
 
@@ -405,7 +405,7 @@ process mapWithStar {
     shell:
     '''
     mapPrefName=`basename !{demultiplexfq} | sed 's/[.].*//g'`
-    mapPrefName=$mapPrefName"_"
+    mapPrefName=$mapPrefName"_"!{Genome}"_"
     STAR --runMode alignReads --readFilesIn !{demultiplexfq} \
          --genomeDir !{genomePath}'/'!{Specie}'/'!{Genome}'/STAR_Index' \
          --runThreadN !{task.cpus} \
@@ -468,7 +468,7 @@ mappingStatsAggr
 process countReads {
     label 'high_memory'
 
-    publishDir "${outputDir}/counts/${RunID}/${LibraryID}/${SampleID}",
+    publishDir "${outputDir}/counts/${RunID}/${LibraryID}/${SampleID}/${Genome}",
                mode: 'copy', pattern: '{*.detailed.txt}', overwrite: true
 
     input:
@@ -663,10 +663,6 @@ process generateUserReport {
           !{Specie} !{Genome} !{sampleTabPath} !{outputDir}"/user_report/"
   '''
 }
-
-seqStatsBundle.println()
-mapStatsBundle.println()
-
 
 // clean up in case of successful completion
 workflow.onComplete {
