@@ -3,13 +3,13 @@
 def helpMessage() {
 
     log.info """
-    -      \033[41m A L I T H E A  G E N O M I C S   P I P E L I N E v1.0\033[0m-
+    -      \033[41m Q U I C K S I L V E R (A L I T H E A  G E N O M I C S) v1.0\033[0m-
     ================================================================================
     Welcome to the Nextflow BRB-seq analysis command line pipeline!
 
     Usage:
     The \033[1;91mtypical\033[0m command for running the pipeline is as follows:
-    nextflow step2_QC_to_counts.nf \033[1;91m--user\033[0m UserName \\
+    nextflow quicksilver_v1_0_0.nf \033[1;91m--user\033[0m UserName \\
                         \033[1;91m--pi\033[0m PiName \\    
                         \033[1;91m--inputTab\033[0m table.csv \\
                         \033[1;91m--FQdir\033[0m fqDir \\
@@ -18,12 +18,12 @@ def helpMessage() {
 
     or
 
-    nextflow forTest.nf \033[1;91m--user\033[0m UserName \\
+    nextflow quicksilver_v1_0_0.nf \033[1;91m--user\033[0m UserName \\
                         \033[1;91m--pi\033[0m PiName \\    
                         \033[1;91m--inputTab\033[0m table.csv \\
 
     to put the pipeline into \033[1;91mbackground\033[0m mode:
-    nextflow step2_QC_to_counts.nf \033[1;91m--user\033[0m UserName \\
+    nextflow quicksilver_v1_0_0.nf \033[1;91m--user\033[0m UserName \\
                         \033[1;91m--pi\033[0m PiName \\    
                         \033[1;91m--inputTab\033[0m table.csv \\
                         \033[1;91m--FQdir\033[0m fqDir \\
@@ -157,6 +157,7 @@ log.info """\
          ${outputDir}/counts	:	folder containing counts for individual samples
          \033[1;93m${outputDir}/countTables\033[0m	:	folder containing \033[1;93mfinal count tables\033[0m
          \033[1;93m${mapStatsTab}\033[0m  : a \033[1;93mfile with mapping statistics\033[0m and further visualized with \033[1;93mplotMapStats.R\033[0m
+         \033[1;93m${user_report}\033[0m  : a \033[1;93mfolder with report to give back to user\033[0m 
 
 
          \033[1;91mImportant note:\033[0m: you may not see some of the samples in the final
