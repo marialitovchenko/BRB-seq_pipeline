@@ -653,9 +653,13 @@ process mergeUMICounts {
 *----------------------------------------------------------------------------*/
 process generateUserReport {
   label 'low_memory'
+  maxForks 1
 
   input: 
   tuple RunID, LibraryID, SampleID, Specie, Genome from forUserReport
+
+  output:
+  tuple RunID, LibraryID, SampleID, Specie, Genome into forCleanUp
   
   shell:
   '''
@@ -664,6 +668,22 @@ process generateUserReport {
           !{Specie} !{Genome} !{sampleTabPath} !{outputDir}"/user_report/"
   '''
 }
+
+/* ----------------------------------------------------------------------------
+* Clean up after generating Rmarkdown user reports
+*----------------------------------------------------------------------------*/
+process cleanUpAfterMarkdown {
+  label 'low_memory'
+
+  input:
+  tuple RunID, LibraryID, SampleID, Specie, Genome from forCleanUp
+
+  shell:
+  '''
+  rm -r !{outputDir}"/user_report/"!{RunID}
+  '''
+}
+
 
 // clean up in case of successful completion
 workflow.onComplete {
