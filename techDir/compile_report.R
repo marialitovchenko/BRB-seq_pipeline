@@ -73,10 +73,16 @@ names(inputArgs) <- c(names(cmdArgs)[c(-10, -3)], 'fastqcR1', 'fastqcR2',
                       'countTab')
 resultHTML <- paste0(cmdArgs['RunID'], '_', cmdArgs['LibraryID'], '_',
                     cmdArgs['SampleID'], '_', cmdArgs['Genome'], '.html')
-resultHTML <- paste0(cmdArgs['outputDirPath'], '/', resultHTML)
+# for beginning, each html will be saved in subfolder: RunID/LibraryID/SampleID
+# of the result folder. Otherwise, since Rmd first creates md file with the 
+# same name as markdown (Generate_UserReport.md) then upon a parallel execution
+# of same markdown file for different input parameters, clushes could occur and
+# not all reports will be created. Subfolders solve this problem.
+resultHTML <- paste(cmdArgs['outputDirPath'], subFolders, cmdArgs['Genome'], 
+                    resultHTML, sep = '/')
 
 # recursively create directories
-system(paste('mkdir -p', cmdArgs['outputDirPath']))
+system(paste('mkdir -p', dirname(resultHTML)))
 
 system(paste0("R -e \"rmarkdown::render(\'", markdownScript,
               "\', output_file=\'",resultHTML, "\')\" --args ", 
@@ -85,6 +91,11 @@ system(paste0("R -e \"rmarkdown::render(\'", markdownScript,
 # Move the tables to the output folder ----------------------------------------
 currScriptDir <- dirname(markdownScript)
 tabsToMove <- paste0(cmdArgs['RunID'], '_', cmdArgs['LibraryID'], '_',
-                    cmdArgs['SampleID'], '*.csv')
+                     cmdArgs['SampleID'], '*.csv')
 tabsToMove <- paste0(currScriptDir, '/', tabsToMove)
 system(paste('mv', tabsToMove, cmdArgs['outputDirPath']))
+
+# Move html to the output folder, remove tmp subfolders -----------------------
+system(paste('mv', resultHTML, cmdArgs['outputDirPath']))
+
+
