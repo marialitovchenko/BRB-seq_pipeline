@@ -35,7 +35,7 @@ subFolders <- paste(cmdArgs['RunID'], cmdArgs['LibraryID'],
 
 # get fastqc text report for R1 and R2: we need to unzip them first
 fastqcDir <- paste(cmdArgs['ResultFolder'], 'fastQC', subFolders, sep = '/')
-fastqcR1zip <- list.files(fastqcDir, pattern = '_R2_.*zip$', full.names = T) 
+fastqcR1zip <- list.files(fastqcDir, pattern = '_R1_.*zip$', full.names = T) 
 fastqcR2zip <- list.files(fastqcDir, pattern = '_R2_.*zip$', full.names = T) 
 system(paste('unzip -d', fastqcDir, '-u', fastqcR1zip))
 system(paste('unzip -d', fastqcDir, '-u', fastqcR2zip))

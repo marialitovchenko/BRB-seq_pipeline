@@ -413,6 +413,7 @@ plotBarChart_plotly <- function(dtToPlot, mode = 'Reads', xAxisTitle,
                              categoryarray = levels(byName$y)))
   updatemenus <- list(
     list(active = -1, type = "buttons",
+         xref = 'paper', yref = 'paper', x = 1.5, y = 0.96,
          buttons = list(
            list(label = "Sort by value", method = "update",
                 args = list(list(visible = c(T, F)),
@@ -963,7 +964,7 @@ Table below presents technical infomation about current sequencing run. Alithea
 Genomics uses modified Illumina paired end sequencing technology: read 1 (R1)
 contains information about a sample RNA molucule is coming from and its unique
 identified and read 2 contains sequence of RNA molecule. Typical read 1 length 
-is 20 - 21 bp, and typical read 2 length is 75bp.
+is 20 - 21 bp, and typical read 2 length is 65 - 75bp.
 
 ```{r generalInfo, results = 'asis'}
 kable(basicStats, caption = 'Information about sequencing')
@@ -1015,10 +1016,10 @@ number of  reads is decreased.
 
 ## Table
 Table below presents overview of the trimming statistics, such as number of 
-reads with adapters and quality trimmed reads. Row "Number of sequence pairs
-removed because at least one read was shorter than the length cutoff" gives a 
-precise number and percentage of how many reads were removed from the set
-due to either bad quality of bases or adapter contamination.
+reads with adapters and quality trimmed reads. Some reads were removed due to
+either bad quality of bases or adapter contamination. Row "Total written
+(filtered)" gives a precise number and percentage of how many reads from the 
+set were retained for further analysis. 
 
 ```{r trimmingTable, results = 'asis'}
 trimInf_R2 <- as.data.table(readInTrimmingInfo(inputArgs['trimInfoR2']))
@@ -1176,7 +1177,8 @@ A table representation of the number and percentage of the exonic reads per
 sample. It is also avaible in the separate file.
 
 ```{r exonicReadsTab, results = 'asis'}
-colnames(exonicReads) <- c('Sample', 'Number of reads',
+colnames(exonicReads) <- c('Sample', 'Number of uniquely mapped reads',
+                           'Number of exonic reads',
                            '% from uniquely mapped')
 kable(exonicReads, caption = 'Exonic reads') %>%
       kable_styling(bootstrap_options = c("striped", "hover", "condensed",
