@@ -56,15 +56,15 @@ $( document ).ready(function() {
 # Sets up R markdown environment, reads input vector, names it
 knitr::opts_chunk$set(echo = F)
 inputArgs <- commandArgs(trailingOnly = T)
-#inputArgs <- c('TestUser', 'TestPI', 'NXT0570', 'nxid13446', 'BRB_AM_10',
-#               'danio_rerio', 'GRCz11.100_GFP', 'test_input/sampleTable.csv',
-#               'test_input/theResult/fastQC/nxid13446/BRB_AM_10/BRB_AM_10_S7_R1_001_fastqc/fastqc_data.txt',
-#               'test_input/theResult/fastQC/nxid13446/BRB_AM_10/BRB_AM_10_S7_R2_001_fastqc/fastqc_data.txt',
-#               'test_input/theResult/trimmed/nxid13446/BRB_AM_10/NXT0570_nxid13446_BRB_AM_10_trimming_report.txt',
-#               'test_input/theResult/trimmed/nxid13446/BRB_AM_10/BRB_AM_10_S7_R2_001_val_2_fastqc/fastqc_data.txt',
-#               'test_input/theResult/demultiplexed/nxid13446/BRB_AM_10/stats.txt',
-#               'test_input/theResult/mapStatsTab.csv',
-#               'test_input/theResult/countTables/NXT0570_nxid13446_GRCz11.100_GFP_BRB_AM_10_readsCombined.csv')
+inputArgs <- c('TestUser', 'TestPI', 'NXT0570', 'nxid13446', 'BRB_AM_10',
+               'danio_rerio', 'GRCz11.100_GFP', '../test_input/sampleTable.csv',
+               '../test_input/theResult/fastQC/nxid13446/BRB_AM_10/BRB_AM_10_S7_R1_001_fastqc/fastqc_data.txt',
+               '../test_input/theResult/fastQC/nxid13446/BRB_AM_10/BRB_AM_10_S7_R2_001_fastqc/fastqc_data.txt',
+               '../test_input/theResult/trimmed/nxid13446/BRB_AM_10/NXT0570_nxid13446_BRB_AM_10_trimming_report.txt',
+               '../test_input/theResult/trimmed/nxid13446/BRB_AM_10/BRB_AM_10_S7_R2_001_val_2_fastqc/fastqc_data.txt',
+               '../test_input/theResult/demultiplexed/nxid13446/BRB_AM_10/stats.txt',
+               '../test_input/theResult/mapStatsTab.csv',
+               '../test_input/theResult/countTables/NXT0570_nxid13446_GRCz11.100_GFP_BRB_AM_10_readsCombined.csv')
 names(inputArgs) <- c('User', 'PI', 'RunID', 'LibraryID', 'SampleID', 'Specie',
                       'Genome', 'submissionTab', 'fastqcR1', 'fastqcR2',
                       'trimInfoR2', 'fastqcTrimR2',
@@ -113,6 +113,13 @@ colorCode <- c("mapped to mult. loci" = '#FFBABA',
                'NOT mapped - other' = '#730202', 
                'mapped to too many loci' = 'black',
                "uniquely mapped" = "#0C8954")
+
+colorCode <- c("mapped to mult. loci" = '#2B4C7E', 
+               "NOT mapped - mismatches" = '#567EBB', 
+               'NOT mapped - too short' = '#BEDCE7',
+               'NOT mapped - other' = '#DCE0E6', 
+               'mapped to too many loci' = '606D80',
+               "uniquely mapped" = "#3B8686")
 
 #' readFastQCsection
 #' Reads a part of the fastqc report TXT file and converts it to data table
@@ -456,14 +463,15 @@ plotDemultiplexPlate_plotly <- function(dtToPlot, plotTitle) {
   filledPlate <- merge(emptyPlate, dtToPlot_datTab, all = T)
   
   fig <- plot_ly() %>% 
-    add_trace(data = filledPlate, x = ~PlateRow, y = ~as.factor(PlateCol),
+    add_trace(data = filledPlate, x = ~as.factor(PlateCol), y = ~PlateRow,
               type = 'scatter', mode = 'markers', 
-              marker = list(size = ~10 * Percent, color = basicColor,
-                            opacity = 1),
-              text = ~ paste0("Sample: ", SampleName, "\nValue: ",
+              marker = list(color = ~Percent, colorscale = 'Viridis',
+                            size = ~ifelse(is.na(Percent), 0, 15),
+                            opacity = 1, colorbar = list(title = 'Colorbar')),
+              text = ~paste0("Sample: ", SampleName, "\nValue: ",
                               round(Percent, 2)),
               hoverinfo = "text") %>%
-    layout(title = plotTitle, showlegend = F,
+    layout(title = plotTitle, 
            font = alitheaPlotlyFont,
            xaxis = append(alitheaPlotlyAxis,
                           list(title = '', 
@@ -628,21 +636,20 @@ addAllBarChartTraces <- function(figToAdd, dataList, statSortedBy, plotColors,
                         type = 'bar', name = statSortedBy,
                         marker = list(color = plotColors[statSortedBy]),
                         visible = visibility,
-                        text = ~ paste0(statSortedBy, " in ", SampleName,
-                                        "\n", round(Value, 2)),
+                        text = ~ paste0(SampleName, "\n", round(Value, 2)),
                         hoverinfo = "text")
   
   otherStats <- names(dataList[[statSortedBy]])
   otherStats <- otherStats[otherStats != statSortedBy]
   for (oneMapStat in otherStats) {
+    dataToPlotOneTrace <- dataList[[statSortedBy]][[oneMapStat]]
     figToAdd <- figToAdd %>% 
-                add_trace(data = dataList[[statSortedBy]][[oneMapStat]],
+                add_trace(data = dataToPlotOneTrace,
                           x = ~Value, y = ~SampleName, 
+                          text = ~ paste0(SampleName, "\n", round(Value, 2)),
                           type = 'bar', name = oneMapStat,
                           marker = list(color = plotColors[oneMapStat]),
                           visible = visibility,
-                          text = ~ paste0(oneMapStat, " in ", SampleName,
-                                        "\n", round(Value, 2)),
                           hoverinfo = "text")
   }
   figToAdd
