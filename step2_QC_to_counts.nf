@@ -112,7 +112,7 @@ usedBarcodeDir = outputDir + '/barcodeTables'
 // technical directory, contains all support files, like scripts, jars, etc
 params.techDir = 'techDir'
 params.brbseqTools = file(params.techDir + '/BRBseqTools.1.5.jar')
-params.barcodefile = file(params.techDir + '/barcodes_v3.txt')
+params.barcodefile = file(params.techDir + '/barcodes_v4.txt')
 params.compile_report = file(params.techDir + '/compile_report.R')
 params.markdown = file(params.techDir + '/Generate_UserReport.Rmd')
 params.barcodesPerLibrary = file(params.techDir + '/barcodesPerLibrary.R')
@@ -680,7 +680,7 @@ process cleanUpAfterMarkdown {
 
   shell:
   '''
-  rm -r !{outputDir}"/user_report/"!{RunID}
+  rm -rf !{outputDir}"/user_report/"!{RunID}
   '''
 }
 
